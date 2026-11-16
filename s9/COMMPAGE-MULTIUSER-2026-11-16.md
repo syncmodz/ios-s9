@@ -220,7 +220,37 @@ ambos importam `_MGCopyAnswer`, ambos têm as strings `Failed to query gestalt f
 BootManifestHash`, `Unable to get path for booted OS data` e o formato `%s/%s-MSUData`.
 Não é uma build diferente que pergunta onde a outra não perguntava.
 
-**Hipótese (b) confirmada, e a causa é o ADT — mas não o hash, o nó `chosen`.** A prova
+**Hipótese (b) investigada em 2026-11-16 e DERRUBADA em teste com o aparelho.**
+
+Registrei aqui, antes do teste, que a causa seria o `libMobileGestalt` lendo
+`IODeviceTree:/chosen/secure-boot-hashes` e que o `mkadt.py` não criava esse nó.
+Implementei o nó, flashee, bootei, e **a mensagem não mudou**:
+
+```
+copy_path_for_booted_os_data: Failed to query gestalt for the BootManifestHash
+main: Unable to get path for booted OS data
+```
+
+A razão é simples e está nas próprias imagens: **o boot do iOS 16 que chega ao
+SpringBoard tem exatamente o mesmo ADT** — só a propriedade plana, sem o nó, e o
+**mesmo hash** de 48 bytes (`5cbe36011d7d8315…`). O `mkadt.py` já produzia uma
+árvore estruturalmente igual a uma que funciona. Acrescentar o nó não podia mudar
+nada, e não mudou.
+
+O erro de método: a string `IODeviceTree:/chosen/secure-boot-hashes` **existe** no
+`libMobileGestalt` do 18C66, e eu tratei a existência do caminho como prova de
+obrigatoriedade. Não é. O binário do 20H392 (que não tenho) chega à mesma resposta
+sem ele.
+
+O texto abaixo fica como registro do raciocínio que falhou, não como conclusão.
+O resultado completo e a análise do que sobrou estão em
+`s9/SBH-TEST-2026-11-16-negative.md`.
+
+---
+
+### O raciocínio original (incorreto, mantido por transparência)
+
+A prova que eu achei que tinha era a mensagem de sucesso: A prova
 está na mensagem de sucesso:
 
 | | `Content from the ramdisk will be present at` |
@@ -261,11 +291,9 @@ ele fica numa propriedade plana que o gestalt não consulta. O gestalt quer o n�
 (`…/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist`,
 que também não existe na imagem) nunca é populado.
 
-**Ação concreta:** fazer o `mkadt.py` emitir `/chosen` com um filho
-`secure-boot-hashes` contendo o `boot-manifest-hash` — em vez da propriedade plana. É
-mudança de ferramenta de build, testável e sem tocar no aparelho. Vale copiar o formato
-literal do `d22ap.adt` (`0x4afc`), que tem o nó com `name = "secure-boot-hashes"` e
-`AAPL,phandle`.
+**Ação proposta na época (executada e reprovada):** emitir `/chosen` com um filho
+`secure-boot-hashes`. Foi feito (`4d144b0`), flashado e bootado — não mudou nada. O nó
+ficou no `mkadt.py` porque é inofensivo, com comentário dizendo que não é um fix.
 
 O teste do `sweetnull=...,keybagd` continua valendo, mas por outro motivo: ver o que o
 keybagd faz depois de `setupUserSessionStart` — se constrói o cache do gestalt ou morre

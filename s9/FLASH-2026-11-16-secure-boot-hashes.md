@@ -1,7 +1,8 @@
 # Flash do ADT com `secure-boot-hashes` — 2026-11-16
 
-**Feito no aparelho, sem boot.** O dono autorizou flash e análise, e pediu
-explicitamente para **não dar boot**.
+**Feito no aparelho.** O dono autorizou flash e análise, pediu para não dar boot
+naquele momento, e depois autorizou o boot — que **reprovou a hipótese**. O resultado
+está em `s9/SBH-TEST-2026-11-16-negative.md`; este arquivo é o registro do flash.
 
 ## O que estava no aparelho
 
@@ -61,7 +62,9 @@ header. Não é corrupção.
 
 ## Estado e o que falta
 
-- **O aparelho está no TWRP, sem boot**, como pedido.
+- **O aparelho foi bootado neste estado e o teste falhou** (ver
+  `SBH-TEST-2026-11-16-negative.md`); depois o boot original foi restaurado e
+  verificado.
 - O boot antigo está intacto em `backups/boot-sda20-20261116.img` (+ `.sha256`) —
   restaurar é `dd` desse arquivo de volta.
 - **O que este flash testa:** se o `MSUEarlyBootTask` para de logar
