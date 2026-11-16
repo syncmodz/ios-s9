@@ -138,6 +138,129 @@ entrada é validada como dicionário (`0x1000202c8`) e só é aceita se
 
 ---
 
+## 3b. O schema de cada dicionário do `BLOB` (resolvido em 2026-11-16)
+
+`0x100023634` **não** é a validadora — é a que **anexa** a sessão à tabela:
+
+```
+0x100023650  lê _gUserSessionTable (0x100074e70), cria se nulo
+0x100023664  CFArrayAppendValue(tabela, sessão)
+0x100023674  grava a contagem em 0x100074e78
+0x100023678  cmp w20, #0x1 ; b.ne sair      <-- só faz o resto se o 2º arg == 1
+0x100023684  bl 0x100028934                 <-- conversor
+0x100023690  bl 0x100028d34                 <-- instala
+```
+
+O conversor `0x100028934` é quem define o schema. Ele cria um dicionário de saída
+(`0x10001b4c8` = `CFDictionaryCreateMutable`) e copia **quatro** chaves da entrada:
+
+| chave | como é lida | obrigatória? |
+| --- | --- | --- |
+| `MKBUserSessionID` | `CFDictionaryGetValue` | **sim** |
+| `MKBUserSessionGroupID` | `CFDictionaryGetValue` | **sim** |
+| `MKBUserSessionLibinfoHomeDir` | `ContainsKey` + `GetValue` | não — sintetizada |
+| `MKBUserSessionShortName` | `CFDictionaryGetValue` | **sim** |
+
+A síntese do `LibinfoHomeDir` (`0x1000289cc`–`0x100028a2c`) é o único campo derivado:
+
+```
+0x1000289d4  id = CFNumberGetValue(MKBUserSessionID)
+0x1000289e8  subs w8, w21, #0x1f5 ; csel ...   (id > 501 ? id-501 : id)
+0x1000289f4  snprintf(buf, 0x400, "/var/euser%d", ...)
+0x100028a18  CFStringCreateWithCString(buf)
+0x100028a2c  CFDictionarySetValue(entrada, MKBUserSessionLibinfoHomeDir, buf)
+```
+
+Ou seja: para `id = 501` o home é `/var/euser501`; para ids acima de 501 subtrai 501.
+Isso é o caminho de **usuário extra** (multiusuário); o usuário primário tem o home
+explícito no dicionário.
+
+### O dicionário real — e por que o do iOS 16 **não serve** para o 14.3
+
+O `_gUserSessionTable` do iOS 16 (`s9port/logs/evidence-20261029`, o boot que chega ao
+SpringBoard) imprime:
+
+```
+MKBUserSessionCreateTimeStamp = "1970-01-01 00:00:39 +0000"
+MKBUserSessionDirty           = 0
+MKBUserSessionDisplayName     = mobile
+MKBUserSessionFirstName       = mobile
+MKBUserSessionForeground      = 1
+MKBUserSessionGroupID         = 501
+MKBUserSessionID              = 501
+MKBUserSessionLanguage        = "en_US"
+MKBUserSessionLastName        = mobile
+MKBUserSessionLibinfoHomeDir  = "/var/mobile"
+MKBUserSessionLoginTimeStamp  = "1970-01-01 00:00:39 +0000"
+MKBUserSessionLoginUser       = 0
+MKBUserSessionName            = mobile
+MKBUserSessionNeedsMount      = 1
+MKBUserSessionShortName       = mobile
+MKBUserSessionType            = UserSessionOther
+MKBUserSessionUUID            = "5B1B08F2-9233-4B03-A1AE-B875A0F0594A"
+MKBUserSessionVolumeFSType    = UserVolumeAPFSNative
+MKBUserSessionisAdminKey      = 1     <-- NAO EXISTE no keybagd 14.3
+MKBUserSessionisPrimary       = 1     <-- NAO EXISTE no keybagd 14.3
+```
+
+**Correção importante:** `MKBUserSessionisAdminKey` e `MKBUserSessionisPrimary` não
+existem no binário do 14.3 — verificadas por busca literal no `keybagd`, ausentes. São
+campos que o keybagd do iOS 16 acrescentou. Copiar o dicionário do log do iOS 16 para o
+14.3 introduziria duas chaves desconhecidas (provavelmente inofensivas, mas não
+verificadas) e, pior, daria a falsa impressão de que o formato é o mesmo.
+
+As **52** chaves que o keybagd do 14.3 conhece, na ordem em que aparecem no binário:
+
+```
+SetInternalTest  Type  ID  GroupID  Name  HomeDir  LibinfoHomeDir  Foreground
+Dirty  Disabled  Language  QuotaUsed  QuotaSoftLimit  QuotaLimit  UUID
+AlternateUUID  Opaque  ShortName  FirstName  LastName  DisplayName  FileInfo
+LoginTimeStamp  CreateTimeStamp  APNSID  Auditor  isTransient  LoginUser
+CloudLoginTimeStamp  RequiresPasscode  FirstLogin[Start|End]Time
+CachedLogin[Start|End]Time  Logout[Start|End]Time  TotalUsers  ReqTotalUsers
+EachUserSize  TotalDataSize  SystemLoginSize  PreviousLoggedinID
+SyncMachServices  SyncTasks  VolumeDeviceNode  VolumeUUID  VolumeMounted
+VolumeFSType  NeedsMount  HasSyncBag  FileSystemSet  HasSyncBagKey
+```
+
+(todas com o prefixo `MKBUserSession`; a lista acima omite o prefixo por espaço.)
+
+### O `0x1f6` do loop **não** é o `NUMENT` — é o ID da sessão
+
+Correção de uma leitura anterior minha. No loop de `diskLoadUserSessions`:
+
+```
+0x1000202cc  ldr  x1,[x27]        ; x27 = 0x100074320 = "MKBUserSessionID"
+0x1000202d4  bl   0x10001ad14      ; get-int-value(entrada, key) -> id, -1 se ausente
+0x1000202d8  str  w0,[sp,#0x8]
+0x1000202dc  cmp  w0, #0x1f6      ; 502
+0x1000202e0  b.lt 0x1000202f0     ; id < 502 -> PULA esta entrada
+0x1000202ec  bl   0x100023634      ; só instala se id >= 502
+```
+
+Ou seja: **uma entrada com `MKBUserSessionID = 501` é descartada silenciosamente.** 502 é
+`501 + 1`, o primeiro id de *usuário extra*. O ramo `mov w0,#0x1` em `0x100020124` também
+mostra que o caminho de boot carrega apenas as sessões extras; a sessão primária (`mobile`,
+501) não vem deste arquivo — vem da persona `PERSONA_MANAGED` (tipo 2, id 501) que o
+launchd criou no `log33.txt`, e dos personas 4/6 que o `MKB_INIT` já cria.
+
+**Isso muda o alvo.** Um `usersession.kb` mínimo com a sessão 501 num array de uma
+entrada **não** vai popular a tabela: ele é filtrado. O que o arquivo carrega é a lista de
+usuários *adicionais* (multiusuário), com `id >= 502` e home `/var/euser<id>`.
+
+### O que isso significa para a hipótese do §5
+
+O `diskLoadUserSessions` falhar num aparelho single-user pode ser **normal** — não há
+usuários extras para carregar. O log imprimir `LoadAllUserSessions: diskLoadUserSessions
+failed` e continuar pode ser o caminho esperado para este dispositivo, não a causa do
+`SYSTEM_PROXY` em todo mundo.
+
+Fica então: eu não tenho evidência de que criar um `usersession.kb` mude alguma coisa.
+O que tem evidência circunstancial é o commpage multiuser (§5), e o teste de uma linha
+(`sweetnull=...,keybagd`) decide entre as duas.
+
+---
+
 ## 4. Por que o arquivo não existe — e o que fazer
 
 O `open` falha com ENOENT, mas o diretório existe: o log mostra
@@ -157,22 +280,17 @@ Além disso, `0x100020990 cbnz w26 -> 0x100020934` só faz o save se `w26 != 0`,
 
 ### Opções, da menos à mais invasiva
 
-1. **Colocar um `usersession.kb` válido na imagem do root.** Precisa ser gerado no
-   formato do §3, e o `s9hfs.py` não cria arquivo novo (só reescreve bytes dentro de um
-   existente). Dá para reservar um arquivo dummy de tamanho suficiente no HFS e
-   sobrescrevê-lo, mas ainda falta *gerar* o plist — que depende de saber o schema dos
-   dicionários do `BLOB`, que eu **não** resolvi nesta sessão (a validação em
-   `0x100023634` não foi lida).
-2. **Ver o que o daemon (pid 38) faz de verdade.** Ele é invisível no log por causa do
-   `/dev/null` (§1.1). Duas formas baratas: (a) bootar com
+1. **Ver o que o keybagd daemon (pid 38) faz de verdade.** Ele é invisível no log por
+   causa do `/dev/null` (§1.1). Bootar com
    `sweetnull=backboardd,SpringBoard,keybagd` — o mecanismo já existe em
-   `bsd/dev/mem.c:158`, é só um boot-arg; (b) um backtrace do pid 38 pelo sampler.
-   Isto responde se o daemon chega a `setupUserSessionStart` e, se não, onde para.
+   `bsd/dev/mem.c:158`, é só um boot-arg. Responde se ele chama
+   `host_set_multiuser_config_flags` e o que faz depois de `setupUserSessionStart`.
    **É o teste mais barato e o mais informativo desta lista.**
-3. **Instrumentar `diskLoadUserSessions` para logar o `errno` do `open` e o que mais
-   falhou.** Trivial (já temos a string `Could not open %s: %s` no binário; o log
-   atual não a mostra porque ela vai para o `os_log` do keybagd, que não está no nosso
-   console) — mas o `strerror` já está no log: "No such file or directory". Não agrega.
+2. **Medir o commpage.** Um `sysctl` que leia `_COMM_PAGE_MULTIUSER_CONFIG`. Uma linha,
+   e decide a hipótese do §5 em vez de discuti-la.
+3. **Gerar um `usersession.kb`** (§3b) — mas **só faz sentido se o alvo for multiusuário**:
+   o loop filtra `id < 502`, então a sessão 501 num arquivo é descartada. Para este
+   aparelho, provavelmente não é o caminho.
 
 ---
 
@@ -217,8 +335,9 @@ o daemon tenta `host_set_multiuser_config_flags`.
 
 ## 6. O que eu não resolvi
 
-- O schema dos dicionários dentro do `BLOB` (função `0x100023634`). Sem ele não dá para
-  gerar um `usersession.kb` sintético correto.
-- O valor real do commpage em runtime (a hipótese do §5 é estática, não medida).
-- O que o keybagd daemon (pid 38) faz — ele é invisível no log por causa do `/dev/null`
+- O que o keybagd daemon (pid 38) faz — invisível no log por causa do `/dev/null`
   (§1.1). `sweetnull=...,keybagd` responde.
+- O valor real do commpage em runtime (a hipótese do §5 é estática, não medida).
+- Se `diskLoadUserSessions` falhar é sequer um problema neste aparelho: o loop filtra
+  `id < 502` (§3b), então um single-user pode legitimamente não ter nada a carregar.
+  **Esta é a pergunta que decide se vale perseguir o arquivo.**
