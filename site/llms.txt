@@ -10,6 +10,7 @@ Current state: boots to the iOS lock screen and home screen; touch, gesture navi
 - [How it works](https://hackiosx.dev/how-it-works): boot chain (Xiaomi bootloader, shim, XNU, Apple Device Tree), where the drivers come from, why an iPhone X, software rendering, what is faked
 - [Compatibility](https://hackiosx.dev/compatibility): which phones could run it, grouped by chip family (Snapdragon, Tensor, MediaTek, Exynos)
 - [Port it to your phone](https://hackiosx.dev/porting): the hardware-specific files (tools/mkadt.py, shim/, board driver patches in xnu/patches/), where to find the values in the phone's device tree, first-boot stages
+- [References](https://hackiosx.dev/references): the 15 ports and tools this project learned from, with the specific finding worth taking from each (the ppnum_t truncation, the ordered Adreno bring-up, the zap shader, the HFS+ editor), plus licenses and a clone script
 - [Future plans](https://hackiosx.dev/future): Wi-Fi, Bluetooth, possible GPU acceleration
 
 ## Source

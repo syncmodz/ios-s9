@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>References | hackiosx</title>
+<meta name="description" content="The 15 ports and tools this project learned from: what each one is, and the specific finding worth taking from it.">
+<meta name="theme-color" content="#212121">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+<header class="appbar">
+<button class="menu-btn" aria-label="Menu" onclick="document.body.classList.toggle('nav-open')"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+<a class="brand" href="index.html">hackios<b>x</b></a>
+<span class="spacer"></span>
+<a class="ext hide-sm" href="https://www.reddit.com/r/hackios/">r/hackios</a>
+<a class="ext" href="https://github.com/syncmodz/ios-s9">GitHub</a>
+</header>
+<nav class="drawer">
+<div class="head">hackios<b style="color:var(--accent);font-weight:500">x</b></div>
+<div class="sub">Docs</div>
+<a href="index.html">Home</a>
+<a href="how-it-works.html">How it works</a>
+<a href="compatibility.html">Compatibility</a>
+<a href="porting.html">Port it to your phone</a>
+<a href="references.html" class="active">References</a>
+<a href="future.html">Future plans</a>
+<hr>
+<div class="sub">Links</div>
+<a href="https://github.com/syncmodz/ios-s9">Source on GitHub</a>
+<a href="https://github.com/MakrSas/ios-topaz">Redmi Note 12 port</a>
+<a href="https://github.com/ch1tmdgus/ios-v60">LG V60 port</a>
+<a href="https://www.reddit.com/r/hackios/">r/hackios</a>
+</nav>
+<div class="scrim" onclick="document.body.classList.remove('nav-open')"></div>
+<main><div class="page">
+<h1>References</h1>
+<p class="lead">Everything this project learned from. Fifteen ports and tools, each with the one thing worth taking from it. If you are starting your own port, this is the shortest path to not repeating our mistakes.</p>
+
+<div class="note">
+<strong>These are links, not copies.</strong> Every entry points at its own upstream repository.
+The full list is in <a href="https://github.com/syncmodz/ios-s9/blob/main/refs/REFS.md">refs/REFS.md</a>,
+and <code>refs/clone-refs.sh</code> fetches them all.
+</div>
+
+<h2 id="start-here">Start here</h2>
+<div class="grid">
+<a class="card" href="https://github.com/dipa-studio/ios-sweet">
+<h3>ios-sweet</h3>
+<p class="chip good">the origin</p>
+<p>The base everything else forks from: XNU on a Qualcomm phone, unmodified iOS userland. Read the build system and the <code>sweet_*</code> driver convention first.</p>
+<p class="more">Read it</p>
+</a>
+<a class="card" href="https://github.com/NWylynko/ios-flame">
+<h3>ios-flame</h3>
+<p class="chip good">the one bug</p>
+<p>Pixel 4 with <strong>Metal working</strong>. <code>METAL-NEXT.md</code> §4 item 1 documents the <code>ppnum_t</code> truncation — on our phone it silently affected <strong>2018 MB of RAM</strong>.</p>
+<p class="more">Read it</p>
+</a>
+<a class="card" href="https://github.com/Chromitsune/Portsmith-iOS">
+<h3>Portsmith</h3>
+<p class="chip good">the map</p>
+<p>A catalogue of <strong>115</strong> ports and frameworks with pinned revisions. Find a port to a device close to yours instead of searching GitHub.</p>
+<p class="more">Read it</p>
+</a>
+</div>
+
+<h2 id="gpu">Getting graphics to work</h2>
+<p class="lead">The hardest part of any port, in the order we would attempt it.</p>
+
+<div class="card">
+<h3>ios-sailfish — the ordered Adreno bring-up</h3>
+<p>iOS 16 on a Pixel 1 with GPU acceleration: CoreAnimation's GLES renderer on Mesa freedreno, through its own kernel driver. 187 patches, and <code>0119</code>–<code>0127</code> is the sequence to copy:</p>
+<div class="table-wrap"><table>
+<tr><th>Patch</th><th>What it establishes</th></tr>
+<tr><td><code>0119</code></td><td>power probe — is the GPU even on?</td></tr>
+<tr><td><code>0121</code></td><td>SMMU in identity mode, which unblocks DMA before you understand the SMMU</td></tr>
+<tr><td><code>0124</code></td><td>MMIO without write-combining, when the bus will not tolerate it</td></tr>
+<tr><td><code>0126</code></td><td>2D blit — enough to prove the pipeline works</td></tr>
+<tr><td><code>0127</code></td><td>RBCCU / SP power domain, where bring-up usually stalls</td></tr>
+</table></div>
+<p><a href="https://github.com/devilAPI/ios-sailfish">devilAPI/ios-sailfish</a></p>
+</div>
+
+<div class="card">
+<h3>ios-topaz — proving the display actually works</h3>
+<p>Redmi Note 12, 204 patches. Its <code>NOTES.md</code> records the exact console lines that prove backboardd drew through the kernel display path — the IOSurface selectors, the IOMFB <code>SwapBegin</code>/<code>SwapEnd</code> traps, and the alternating <code>SWEET FB: swap N layer 0 surface 2|3</code> that demonstrates double buffering.</p>
+<p>If you need to tell "the display works" from "the display looks like it works", this is the reference. The <code>0901</code>–<code>0911</code> series covers GPU memory when the GPU powers on but faults.</p>
+<p><a href="https://github.com/MakrSas/ios-topaz">MakrSas/ios-topaz</a></p>
+</div>
+
+<div class="card">
+<h3>ios-apollo — the zap shader</h3>
+<p>Galaxy S20. The GPU power and TrustZone path: CX/GMU power, EPSS/CPUFreq/SMMU interaction, hypervisor-safe register access, HFI GX power, SQE/CP start, and <strong>zap shader loading through TrustZone</strong> — the step that stops most Adreno bring-ups. Clearest treatment in the set.</p>
+<p><a href="https://github.com/enesuzun2002/hakios-apollo">enesuzun2002/hakios-apollo</a></p>
+</div>
+
+<div class="grid">
+<a class="card" href="https://github.com/ry-diffusion/Chlorophyll">
+<h3>Chlorophyll</h3>
+<p class="chip hard">Metal</p>
+<p>Translates Apple's AIR (the GPU IR inside <code>.metallib</code>) to Mesa's NIR and implements the Metal API over Gallium. The only complete answer here to "Metal without Apple's driver".</p>
+<p class="more">Read it</p>
+</a>
+<a class="card" href="https://github.com/steelbrain/metal2vulkan">
+<h3>metal2vulkan</h3>
+<p class="chip hard">the alternative</p>
+<p>Runs Metal shaders and programs on Vulkan. Instead of writing a Metal driver, translate Metal and reuse the phone's Vulkan driver.</p>
+<p class="more">Read it</p>
+</a>
+</div>
+
+<h2 id="tooling">Tooling you will want</h2>
+
+<div class="card">
+<h3>Veerhooda's iOS 12 / OnePlus 2 — the HFS+ editor</h3>
+<p>iOS 12.5.7 on a OnePlus 2, booting from Qualcomm's bootloader into a shim with a real HFS+ root on eMMC.</p>
+<p><code>tools/op2hfs.py</code> is an in-place HFS+ editor — our <code>s9hfs.py</code> is derived from it. If you need to read or write an iOS root filesystem from a host without mounting it, start here. <code>tools/stage-hfs.sh</code> shows how to stage a root image reproducibly.</p>
+<p><a href="https://github.com/Veerhooda/iOS">Veerhooda/iOS</a> · <a href="https://github.com/Veerhooda/xnu">Veerhooda/xnu</a></p>
+</div>
+
+<div class="card">
+<h3>HakiOS — iterate without flashing</h3>
+<p>XNU with its own bootloader and drivers on a Qualcomm phone, booting stock iOS 16.5 userspace — and the same thing in QEMU. The loader goes in through <code>fastboot boot</code> and the system lives in RAM, so a reboot brings the phone back to Android.</p>
+<p>That is a far faster loop than flashing, and the QEMU target means you can debug the kernel with no phone attached.</p>
+<p><a href="https://github.com/oosexgang/hackios-xnu-kernel">oosexgang/hackios-xnu-kernel</a></p>
+</div>
+
+<div class="card">
+<h3>Bergamota — the same SoC as ours</h3>
+<p class="chip ok">read only, no license</p>
+<p>iOS 18.7.8 on a Poco F1 — <strong>Snapdragon 845, the same SoC family as this phone</strong> — to SpringBoard, with its own kernel. The UFS, display controller and power domain specifics are the same silicon we drive.</p>
+<p>This one ships <strong>no license</strong>, which means all rights reserved. Read it, learn from it, do not vendor it into your own repository.</p>
+<p><a href="https://github.com/ry-diffusion/Bergamota">ry-diffusion/Bergamota</a></p>
+</div>
+
+<div class="card">
+<h3>iOSPlus10 — arm64e and PAC</h3>
+<p>iOS on a OnePlus 10 Pro through UEFI, aiming at iOS 26 with Metal. Its cores have ARMv8.3 PAC, so the arm64e userland runs without the shared-cache rewrite that phones without PAC need.</p>
+<p>If you are targeting iOS 15 or later, read this before assuming you must rewrite the dyld shared cache.</p>
+<p><a href="https://github.com/MellysInformejtik/slop">MellysInformejtik/slop</a></p>
+</div>
+
+<div class="card">
+<h3>klte-ios7 — it is not tied to arm64</h3>
+<p>iOS 7.1.2 on a Galaxy S5 (Snapdragon 801) — an ARMv7 port of XNU 2107. Proof that the technique works on 32-bit ARM and on much older iOS.</p>
+<p><a href="https://github.com/Quantitative101/iOS7-KLTE-GalaxyS5">Quantitative101/iOS7-KLTE-GalaxyS5</a></p>
+</div>
+
+<h2 id="what-is-not-here">Why these are links and not code</h2>
+<p>The working set is 3.5 GB, most of it third-party code already published upstream. Four of these projects ship <strong>no license at all</strong> — <code>Bergamota</code>, <code>ios-topaz</code>, <code>ios-sailfish</code> and <code>hakios-sm8150</code> — which under copyright means all rights reserved, so they cannot be redistributed. The rest are MIT, GPL or APSL and could be, but copying them would only make this repository a stale mirror of someone else's work.</p>
+
+<div class="table-wrap"><table>
+<tr><th>License</th><th>Sources</th></tr>
+<tr><td>MIT</td><td>ios-sweet, ios-apollo, Portsmith-iOS</td></tr>
+<tr><td>GPL-2.0+ / LGPL-3.0+</td><td>metal2vulkan</td></tr>
+<tr><td>GPLv2</td><td>LineageOS SDM845 kernel</td></tr>
+<tr><td>APSL 2.0</td><td>Apple's XNU</td></tr>
+<tr><td>own terms</td><td>Taurine, Chlorophyll, HakiOS, iOSPlus10, klte-ios7</td></tr>
+<tr><td><strong>none stated</strong></td><td><strong>Bergamota, ios-topaz, ios-sailfish, hakios-sm8150</strong></td></tr>
+</table></div>
+
+<div class="warn">
+<strong>The four with no license are all rights reserved by default.</strong> They are linked here, not copied, and that is deliberate — do not vendor them into your own repository without asking their authors.
+</div>
+
+<h2 id="fetch">Fetch them</h2>
+<p>From a clone of the repository:</p>
+<pre><code>cd refs
+./clone-refs.sh              # everything, ~3.5 GB
+./clone-refs.sh --small      # only the ones under 10 MB, ~60 MB
+./clone-refs.sh ios-flame    # one or more by name
+./clone-refs.sh --list       # show the names</code></pre>
+<p>Clones land in <code>refs/src/</code>, which is gitignored.</p>
+
+<footer>hackiosx.dev documents this port. It is not affiliated with Apple. iOS is Apple's software and is not distributed here.</footer>
+</div></main>
+</body>
+</html>
