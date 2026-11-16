@@ -164,12 +164,12 @@ Firmware stock: `../ZTO-G9600ZHU9FVF2` (G9600ZHU9FVF2, Android 10).
   (reset depois de configurado → reinicia o controlador; link cai quando o barramento suspende = cabo fora),
   política "AMFI" do dyld (__mac_syscall 90 → 0xff: DYLD_INSERT_LIBRARIES liberado) e `sysctl kern.sweet_next_boot`
   (1 = recovery: PON SOFT_RB_SPARE 0x88F bits 7:1 via canal SPMI 0xc600000+0x10000*APID + cookie IMEM).
-- **Root v2** (`tools/prep-ios6.sh`, sudo): v1 + bootstrap Procursus rootful (palera1n bootstrap-1800) + jb/debs
-  (ElleKit 1.2, Sileo 2.5.1, NewTerm 3, OpenSSH 9.7, network-cmds) instalados no 1º boot pelo job
+- **Root v2** (`tools/prep-ios6.sh`, sudo): v1 + **bootstrap do Taurine** (iOS 14) + jb/debs
+  (Sileo 2.3, libhooker 1.6.9 + newabi, safemode, PreferenceLoader, NewTerm 3, OpenSSH 9.7) instalados no 1º boot pelo job
   com.ios-s9.jbsetup (log /var/ios-s9/jbsetup.log), s9net (s9/ios-tools no fork, CI s9-ios-tools: publica
   IPv4/DNS do ue0 no configd), sshd inetd (22/2222, chave ~/.ssh/ios-s9 do PC p/ root), SpringBoard com
-  DYLD_INSERT_LIBRARIES=/usr/lib/TweakInject.dylib (ElleKit estilo Taurine; /.installed_taurine pula o loader).
-  Substitute não existe p/ iOS 16 e conflita com o ElleKit. Senha mobile/root: alpine.
+  DYLD_INSERT_LIBRARIES=/usr/lib/TweakInject.dylib (injetor do libhooker; jailbreakd do Taurine precisa estar de pé).
+  Senha mobile/root: alpine.
   PC: perfil NetworkManager `s9-usb` (MAC 02:00:5e:77:ee:01, 192.168.7.1) + dispatcher NAT 90-ios-s9-share.
 - **Controle remoto:** `tools/s9ssh.sh [cmd]`, `tools/s9-twrp.sh` (iOS → TWRP sem botões), `tools/s9-log.py ARQ`
   (log do kernel ao vivo, UDP 5140). boot-ios6 = kernel 8 + boot-args do ios4 + `sweetusb=2 cs_enforcement_disable=1`.

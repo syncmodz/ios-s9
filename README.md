@@ -124,6 +124,27 @@ s9/tools/flash-twrp.sh          # dd + readback, refuses on mismatch
 python3 s9/tools/sweet-log.py logs/boot.txt
 ```
 
+## The jailbreak layer
+
+iOS 14.3 needs a jailbreak that actually covers 14.3. Ours is **Taurine**
+(Odyssey Team — iOS 14.0–14.3, A8–A14), which ships its own bootstrap and injects
+through **libhooker**.
+
+That is a change from the earlier iOS 16 work, which used palera1n's Procursus
+bootstrap and ElleKit. Neither exists for 14.3: palera1n publishes CFVER 1700 and
+1800 only, `apt.procurs.us` has no 1400 suite, and ElleKit starts at iOS 15. There
+is no Procursus bootstrap for 14.3 to download at any URL — so this is not a
+version pinned a little too high, it is a layer that cannot work here.
+
+`xnu/patches/` (the iOS 16 series) is kept as reference. The kernel we run is
+`xnu/patches-7195/`.
+
+One caveat worth stating plainly: on a real device Taurine applies a kernel
+exploit first, and `jailbreakd` expects to have patched the kernel itself. Here
+the kernel is ours and already permissive, so the pieces are installed ahead of
+time — a configuration its authors never tested. Details in
+[`s9/jailbreak/README.md`](s9/jailbreak/README.md).
+
 ## The two kernel fixes worth knowing
 
 **`pmap_sync_page_attributes_phys` truncated physical addresses.** It did
@@ -149,8 +170,11 @@ This port stands on other people's work and claims none of it. See [CREDITS.md](
   `s9hfs.py` is derived from.
 - **LineageOS / Samsung** SDM845 kernel sources (GPLv2) — the register sequences and
   device tree for the panel, touch, USB, RPMh, OSM and SMMU.
-- **palera1n / Procursus, ElleKit, Sileo, NewTerm** — the jailbreak layer, downloaded
-  from their official sources, never redistributed here.
+- **Taurine** (Odyssey Team) — the iOS 14 jailbreak, its bootstrap and its basebinaries.
+  **libhooker** (CoolStar) for injection, **Sileo** for packages, **NewTerm** for the
+  terminal. Downloaded from their official sources, never redistributed here.
+  (palera1n/Procursus and ElleKit are iOS 15+ and are not used: there is no Procursus
+  bootstrap for 14.3 at any URL.)
 
 The shim, the kernel changes and the drivers were written by a human directing an AI
 (Claude, Anthropic) on real hardware.

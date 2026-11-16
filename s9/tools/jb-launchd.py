@@ -6,17 +6,26 @@
 This iOS boots with launchd_unsecure_cache=1: launchd reads its jobs from
 /System/Library/xpc/launchd.plist only (nothing loads /Library/LaunchDaemons),
 so the jobs a jailbreak would load at runtime go into that file:
-  com.ios-s9.jbsetup   first boot: prep the Procursus bootstrap, dpkg -i the
-                       bundled debs (ElleKit, Sileo, NewTerm, OpenSSH, ...),
-                       uicache, respring; then exits at once on later boots
+  com.ios-s9.jbstart   starts jailbreakd from the Taurine basebinaries. NOT on
+                       the critical path: libhooker ships its own injector
+                       (/etc/rc.d/libhooker -> inject_criticald, libsyringe-14)
+                       and its own /usr/lib/TweakInject.dylib. jailbreakd is
+                       here because a real Taurine device runs it and some
+                       packages ask it for a port; it is the piece that assumed
+                       it had patched the kernel, so it may crash-loop.
+  com.ios-s9.jbsetup   first boot: runs /prep_bootstrap.sh, dpkg -i the bundled
+                       debs (Sileo, libhooker, safemode, PreferenceLoader,
+                       NewTerm, OpenSSH), uicache, respring; then exits at once
+                       on later boots
   com.ios-s9.s9net     publishes the USB Ethernet service (ue0) to configd
   com.openssh.sshd     the openssh-server package's own job (inetd style,
                        ports 22 and 2222)
-  com.ios-s9.respring  one respring per boot once ElleKit's loader is done
-                       (the first SpringBoard starts before injection is up)
+  com.ios-s9.respring  one respring per boot once SpringBoard and libhooker's
+                       injector are both up (the first SpringBoard starts
+                       before injection is ready)
 and SpringBoard gets DYLD_INSERT_LIBRARIES=/usr/lib/TweakInject.dylib
-(ElleKit's injector, Taurine style; the kernel's AMFI dyld policy allows it,
-and a missing library is not fatal). Idempotent.
+(libhooker's injector; the kernel's AMFI dyld policy allows it, and a missing
+library is not fatal). Idempotent.
 """
 import os
 import plistlib
@@ -40,14 +49,17 @@ JOBS = {
         'StandardOutPath': '/private/var/ios-s9/s9net.log',
         'StandardErrorPath': '/private/var/ios-s9/s9net.log',
     },
-    '/System/Library/LaunchDaemons/com.ios-s9.ellekit.plist': {
-        'Label': 'com.ios-s9.ellekit',
-        'ProgramArguments': ['/usr/libexec/ellekit/loader'],
+    '/System/Library/LaunchDaemons/com.ios-s9.jbstart.plist': {
+        'Label': 'com.ios-s9.jbstart',
+        'ProgramArguments': ['/taurine/jailbreakd'],
+        # RunAtLoad WITHOUT KeepAlive: on a device this slow, a crash-looping
+        # daemon is worse than an absent one. If jailbreakd dies, the log says
+        # so once and stays quiet; libhooker does not need it anyway.
         'RunAtLoad': True,
-        'LaunchOnlyOnce': True,
+        'ThrottleInterval': 10,
         'UserName': 'root',
-        'StandardOutPath': '/private/var/ios-s9/ellekit.log',
-        'StandardErrorPath': '/private/var/ios-s9/ellekit.log',
+        'StandardOutPath': '/private/var/ios-s9/jailbreakd.log',
+        'StandardErrorPath': '/private/var/ios-s9/jailbreakd.log',
     },
     '/System/Library/LaunchDaemons/com.ios-s9.respring.plist': {
         'Label': 'com.ios-s9.respring',

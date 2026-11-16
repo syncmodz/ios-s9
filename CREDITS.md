@@ -17,15 +17,29 @@ work below, and claims none of it. Huge thanks to every author.
   here. No Apple binaries are included in this repository.
 
 ## Jailbreak userland (downloaded from official sources, not redistributed here)
-- **palera1n** & the **Procursus** team — the rootful bootstrap and the package
-  ecosystem (`apt`, `dpkg`, the base tools).
-- **ElleKit** (Évelyne / evelyneee) — the tweak injection / Substrate replacement.
-- **Sileo** (Sileo Team, CoolStar et al.) — the package manager.
+
+The target is iOS 14.3, so the layer is **Taurine**, not palera1n: palera1n's
+Procursus bootstrap starts at CFVER 1700 and there is no 1400 build at any URL.
+Taurine is the jailbreak for iOS 14.0-14.3 and ships its own bootstrap.
+
+- **Taurine** (Odyssey Team, CoolStar et al.) — the iOS 14 jailbreak, its
+  bootstrap (`bootstrap.tar.gz`) and its basebinaries (`jailbreakd`, `jbexec`,
+  `launchjailbreak`, `pspawn_payload.dylib`). 4-Clause BSD.
+- **libhooker** (CoolStar) — the injection library Taurine uses. ElleKit is the
+  iOS 15+ successor and is **not** used here.
+- **Sileo** (Sileo Team, CoolStar et al.) — the package manager, 2.3 (the build
+  Taurine ships).
+- **Procursus** — the `apt`/`dpkg` lineage, and the 1700 suite for the plain CLI
+  tools (OpenSSH). Not the bootstrap.
 - **NewTerm** (Adam Demasi / HASHBANG Productions) — the terminal. GPLv3.
-- **PreferenceLoader** (Procursus / DHowett lineage) — Settings panels for tweaks.
-- **OpenSSH**, **libpcap**, **network-cmds** — via Procursus.
+- **PreferenceLoader** (DHowett lineage) — Settings panels for tweaks.
+- **OpenSSH** — via Procursus.
 - **BigBoss** and the tweak repos — where tweaks and their dependencies come from.
 - **ShowMyTouches** (dvntm) — used only to verify injection.
+
+The iOS 16 tree in `xnu/patches/` used **palera1n**'s Procursus bootstrap
+(CFVER 1800) and **ElleKit**; that layer is kept in git history and in
+`s9/NOTES.md` as reference, not as the current path.
 
 ## Hardware reference
 - **LineageOS / Samsung** SDM845 kernel sources (GPLv2) — the register sequences

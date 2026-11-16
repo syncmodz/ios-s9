@@ -69,11 +69,6 @@ Suites: ./
 Components:
 
 Types: deb
-URIs: https://ellekit.space/
-Suites: ./
-Components:
-
-Types: deb
 URIs: https://poomsmart.github.io/repo/
 Suites: ./
 Components:
@@ -89,6 +84,6 @@ Suites: ./
 Components:
 
 Types: deb
-URIs: https://repo.palera.in/
-Suites: ./
-Components:
+URIs: https://apt.procurs.us/
+Suites: iphoneos-arm64/1700
+Components: main

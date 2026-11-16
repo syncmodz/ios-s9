@@ -5,10 +5,11 @@
 #    02:00:5e:77:ee:01, 192.168.7.1/24) and a dispatcher hook that shares the
 #    PC's connection (NAT) while it is up. Every plug brings it up, unplugging
 #    takes it down: nothing to run again.
-# 2. Root image v2 = v1 (mkiosroot.sh + sweet-root-tweaks.py) + the Procursus
-#    rootful bootstrap + jb/debs (installed by dpkg on the first boot) +
-#    s9net + root's ssh key + the launchd jobs (tools/jb-launchd.py: ElleKit
-#    loader, s9net, sshd, one respring per boot) + the default wallpaper
+# 2. Root image v2 = v1 (mkiosroot.sh + sweet-root-tweaks.py) + the Taurine
+#    bootstrap (iOS 14) + Taurine's basebinaries (jailbreakd, jbexec,
+#    launchjailbreak, pspawn_payload) + jb/debs (installed by dpkg on the first
+#    boot) + s9net + root's ssh key + the launchd jobs (tools/jb-launchd.py:
+#    jailbreakd, s9net, sshd, one respring per boot) + the default wallpaper
 #    (S9Wallpaper tweak) + the Sileo repos.
 # Then (as the normal user, phone in TWRP): tools/flash-userdata.sh IMAGE.
 set -euo pipefail
@@ -70,10 +71,36 @@ trap cleanup EXIT
 "$fsck" -fy "$loop" >/dev/null || echo "fsck: exit $? (repaired or warnings)"
 mount -t hfsplus -o rw,force "$loop" "$mnt"
 
-# Procursus rootful bootstrap (CFVER 1800): /private/etc, /usr, /Library/dpkg ...
-zstd -dc "$jb/bootstrap-rootful-1800.tar.zst" | tar -xp --numeric-owner --keep-directory-symlink -C "$mnt"
-# ElleKit's files in place from the first boot (dpkg registers them later)
-ar p "$jb/debs/0-ellekit.deb" data.tar.xz | tar -xJp --numeric-owner --keep-directory-symlink -C "$mnt"
+# Taurine's bootstrap (iOS 14, iphoneos-arm): /usr, /Library/dpkg, apt, dpkg,
+# bash/zsh. This is what the Taurine app unpacks to / on a real device; we do
+# it here so the image boots with a working package manager already in place.
+# Note it ships as .tar.gz that is really zstd, so let tar detect it.
+tar -xpf "$jb/bootstrap.tar.gz" --numeric-owner --keep-directory-symlink -C "$mnt"
+
+# libhooker + safemode + Sileo's files in place from the first boot (dpkg
+# registers them later). libhooker is the iOS 14 injection layer; ElleKit does
+# not exist for 14.3. Each deb's data.tar is xz or zst depending on the build,
+# so extract with whatever the member name says.
+for d in "$jb/debs"/*.deb; do
+	case "$d" in *sileo*|*libhooker*|*safemode*|*preferenceloader*)
+		m=$(ar t "$d" | grep -E '^data\.tar') || continue
+		case "$m" in
+		*.zst) ar p "$d" "$m" | zstd -dc | tar -xp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
+		*.xz)  ar p "$d" "$m" | tar -xJp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
+		*.gz)  ar p "$d" "$m" | tar -xzp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
+		*)     ar p "$d" "$m" | tar -xp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
+		esac
+		;;
+	esac
+done
+
+# Taurine's basebinaries: jailbreakd is what injects; jbexec and
+# launchjailbreak are its helpers, pspawn_payload.dylib is the spawn hook.
+install -d -m 755 "$mnt/taurine"
+tar -xpf "$jb/basebinaries.tar" --numeric-owner --keep-directory-symlink -C "$mnt/taurine"
+chmod 755 "$mnt/taurine/jailbreakd" "$mnt/taurine/jbexec" "$mnt/taurine/launchjailbreak"
+chmod 755 "$mnt/taurine/amfidebilitate" 2>/dev/null || true
+chmod 644 "$mnt/taurine"/*.dylib 2>/dev/null || true
 
 install -d -m 755 "$mnt/private/var/ios-s9/debs"
 install -m 644 "$jb"/debs/*.deb "$mnt/private/var/ios-s9/debs/"
@@ -95,8 +122,9 @@ if [ -f /prep_bootstrap.sh ]; then
 	printf 'alpine\n' | /usr/sbin/pw usermod 501 -h 0
 	printf 'alpine\n' | /usr/sbin/pw usermod 0 -h 0
 fi
-# ElleKit injects via its loader (com.ios-s9.ellekit at boot); do NOT mark
-# /.installed_taurine (that would make its postinst skip the loader).
+# libhooker is Taurine's injection library and expects jailbreakd to be running
+# (started by com.ios-s9.jbstart). Its postinst must NOT be skipped, so leave
+# /.installed_taurine absent.
 dpkg -i /private/var/ios-s9/debs/*.deb || dpkg -i --force-depends /private/var/ios-s9/debs/*.deb
 dpkg --configure -a
 uicache -a
@@ -107,19 +135,19 @@ EOF
 chmod 755 "$mnt/usr/libexec/ios-s9-jbsetup"
 
 # One respring per boot (launchd job com.ios-s9.respring, tools/jb-launchd.py):
-# SpringBoard starts before com.ios-s9.ellekit's loader has set up injection,
-# so the first SpringBoard of every boot has no tweaks.
+# SpringBoard starts before jailbreakd has set up injection, so the first
+# SpringBoard of every boot has no tweaks.
 cat > "$mnt/usr/libexec/ios-s9-respring" <<'EOF'
 #!/bin/sh
 # Galaxy S9 iOS: one respring per boot (launchd job com.ios-s9.respring).
-# SpringBoard starts before com.ios-s9.ellekit's loader has set up tweak
-# injection, so the first SpringBoard of every boot runs without tweaks.
-# Wait for SpringBoard to be up and the loader to be done, then restart
-# SpringBoard once: the new one gets the tweaks.
+# Tweak injection comes from libhooker through jailbreakd (started by
+# com.ios-s9.jbstart). SpringBoard is spawned by launchd before that is ready,
+# so the first SpringBoard of every boot runs without tweaks. Wait for
+# SpringBoard and jailbreakd, then restart SpringBoard once.
 running() { ps -axo comm | grep -q "$1"; }
 i=0
 while [ $i -lt 900 ]; do
-	if running '/SpringBoard$' && ! running 'ellekit/loader$'; then
+	if running '/SpringBoard$' && running 'jailbreakd$'; then
 		break
 	fi
 	sleep 2
@@ -134,7 +162,8 @@ chmod 755 "$mnt/usr/libexec/ios-s9-respring"
 # Default wallpaper: PosterBoard has no poster providers on this root, so the
 # S9Wallpaper tweak (s9/ios-tools) draws jb/wallpaper.jpg on the lock screen.
 # Into usr/lib/TweakInject directly: /Library/MobileSubstrate/DynamicLibraries
-# is ElleKit's absolute symlink to it, which would resolve on this PC.
+# is an absolute symlink to it in the Taurine/libhooker bootstrap, which would
+# resolve against this PC instead of the image if we wrote through it.
 if [ -f "$jb/S9Wallpaper.dylib" ] && [ -f "$jb/wallpaper.jpg" ]; then
 	install -d -m 755 "$mnt/usr/lib/TweakInject"
 	install -m 755 "$jb/S9Wallpaper.dylib" "$mnt/usr/lib/TweakInject/S9Wallpaper.dylib"
