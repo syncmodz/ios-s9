@@ -95,6 +95,53 @@ Every claim below was verified against the actual binaries, not assumed.
 | Does the kernel enforce `minos`? | **no** — `mach_loader.c` only reads `LC_BUILD_VERSION` to detect simulator binaries, and only on x86_64 |
 | Does dyld-852.2 enforce `minos`? | **no** — it parses it for version APIs and dylib compat checks, never compares it to the OS version |
 
+### The rootfs already has this bootstrap — do not install a second one
+
+The 14.3 root image is **not** a bare Apple userland. It already carries the
+Taurine bootstrap, and it is the same one this script downloads:
+
+| check | result |
+| --- | --- |
+| `/Library/dpkg/status` | **58 packages, byte-identical** to Taurine's `bootstrap.tar.gz` (sha256 `2748249d…` on both) |
+| package set and versions | **zero differences** — same 58 names, same versions |
+| `/usr/bin/dpkg` | sha256 `27b05180…` on both |
+| `/Applications/Sileo.app/Sileo` | sha256 `4ce7f8fd…` on both — Sileo 2.3 is already installed |
+| `/taurine/` | already populated: `jailbreakd`, `jbexec`, `launchjailbreak`, `amfidebilitate`, `ctbypass`, `pspawn_payload*.dylib`, `uicache` |
+
+So `prep-ios6.sh` unpacking `bootstrap.tar.gz` over it is a no-op at best and a
+risk at worst (it would rewrite 2908 files and the dpkg database for no gain).
+
+**What is actually missing** from the rootfs, and therefore the only work left:
+
+| missing | why it matters |
+| --- | --- |
+| `/usr/lib/libswift/stable/*` | Sileo links 8 Swift dylibs hard; 14.3 ships only `libswiftDemangle`/`libswiftXCTest` |
+| `/usr/libexec/libhooker/*`, `/usr/lib/TweakInject.dylib` | the injection layer itself — not installed |
+| `/etc/apt/sources.list.d/` | no repos configured, so Sileo has nothing to list |
+| `/usr/sbin/sshd`, `/usr/libexec/sshd-keygen-wrapper` | OpenSSH not installed |
+| `/usr/libexec/s9net` | our own USB-network publisher |
+
+That is a much smaller job than "build a bootstrap": install `libswift`, install
+`libhooker` + `safemode` + `preferenceloader`, write the sources, install
+OpenSSH, drop in `s9net`. The bootstrap step should be **skipped when
+`/Library/dpkg/status` already exists**.
+
+### Is Taurine rootful or rootless?
+
+**Rootful.** Verified from the source, not assumed:
+
+- `bootstrap.swift` runs `tar -xkf /taurine/bootstrap.tar -C /` — it unpacks to
+  the **root of the filesystem**, not to `/var/jb`.
+- `basebinaries` go to `/taurine`, and `jailbreakd` is started from there.
+- The bootstrap tarball contains **zero** paths under `/var/jb`; `dpkg` lands at
+  `/usr/bin/dpkg`.
+- The marker it writes is `/.installed_taurine`, at the root.
+
+Taurine is an iOS 14 jailbreak, and rootless jailbreaks (`/var/jb`) only became
+the norm with iOS 15. So the whole layer here is rootful — which is why
+NewTerm's rootless build cannot work, and why the rootfs's `/usr/bin/dpkg` is
+the right place for it.
+
 ### libhooker — audited
 
 | check | result |
@@ -112,40 +159,30 @@ So libhooker's injection path is expected to work: it runs as root, root passes
 `task_for_pid`, and no MAC policy blocks it. The one unknown is `libsyringe-14`'s
 14.4 build, as above.
 
-### NewTerm — audited, and it will not work as shipped
+### NewTerm — use 2.5, not 3.0
+
+NewTerm **3.0~beta1** cannot work here, for two independent reasons:
+
+1. It links `libswiftUniformTypeIdentifiers.dylib` **hard**. That dylib does not
+   exist on iOS 14.3 — `UniformTypeIdentifiers` arrived in 14.5, and the
+   framework on this rootfs has only `Info.plist` and `_CodeSignature`, no
+   binary. `org.swift.libswift` cannot supply it; it predates the module.
+2. It is the **rootless** build: it spawns `/var/jb/usr/bin/login`, and a
+   rootful jailbreak has no `/var/jb`.
+
+NewTerm **2.5** is the right one, and it checks out:
 
 | check | result |
 | --- | --- |
-| minos | 14.0 — correct for us |
-| declared deps | `firmware (>= 14.0)`, `zsh \| bash \| fish`, `coreutils`, `ncurses`, `system-cmds` |
-| dep resolution | zsh 5.8-5 ✓, bash 5.1.008 ✓, coreutils ✓, system-cmds ✓, `ncurses` satisfied by `libncursesw6 6.2-1` (`Provides: ncurses (= 6.2-1)`) ✓ |
-| **hard Swift links** | 11, including **`libswiftUniformTypeIdentifiers.dylib`** and `libswiftos.dylib` |
-| `libswiftos` | present in `org.swift.libswift` ✓ |
-| **`libswiftUniformTypeIdentifiers`** | **missing everywhere.** `org.swift.libswift` does not have it, and iOS 14.3's `UniformTypeIdentifiers.framework` contains only `Info.plist` and `_CodeSignature` — **no binary at all** |
-| bundled Swift | `Frameworks/libswift_Concurrency.dylib` (LC_VERSION_MIN_IPHONEOS 7.0) ✓ |
-| **root escalation path** | it spawns **`/var/jb/usr/bin/login`** — the *rootless* jailbreak prefix. This rootfs is rootful and has no `/var/jb`. `/usr/bin/login` exists, but NewTerm does not look there |
+| `LC_VERSION_MIN_IPHONEOS` | **10.0** — well below 14.3 |
+| root escalation | spawns **`/usr/bin/login`** — rootful, and present in the rootfs |
+| Swift linkage | 7 hard (`libswiftCore`, `CoreGraphics`, `Dispatch`, `Foundation`, `ObjectiveC`, `UIKit`, `libswiftos`), 6 weak |
+| those 7 in `org.swift.libswift` | **all present** |
+| rpath | already includes `/usr/lib/libswift/stable` |
+| declared deps | `firmware (>= 10.0)`, `ws.hbang.common (>= 1.16)`, `bash`, `coreutils`, `ncurses`, `system-cmds` — all satisfied |
+| `ws.hbang.common` (Cephei) | 1.16, `LC_VERSION_MIN_IPHONEOS 7.0`; declares `mobilesubstrate`, which libhooker `Provides (= 99.4)`, and links `CydiaSubstrate`, which libhooker ships at `/Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate` |
 
-Two blockers, and they are different in kind:
-
-1. **`libswiftUniformTypeIdentifiers.dylib` does not exist on iOS 14.3.** The
-   framework's binary is the Swift module, so with `UIKit`/Foundation present
-   but that one missing, dyld fails the app at launch. `org.swift.libswift`
-   cannot help: it was built for the iOS 12/13/14 generation, before
-   `UniformTypeIdentifiers` was introduced in **iOS 14.5**. This is the same
-   class of problem as `libsyringe-14`'s 14.4 — the package expects 14.5+.
-   Workarounds are either patching the binary's load command out (needs
-   `install_name_tool` and hoping no symbol is actually called) or finding a
-   newer Swift runtime, which reintroduces the same 14.5 problem.
-
-2. **The `/var/jb` path is rootless.** NewTerm 3.0~beta1 in this repo is the
-   rootless build. A rootful iOS 14 jailbreak has no `/var/jb`; binaries live at
-   `/usr/bin`. So even if it launched, the terminal would not get a shell.
-   The fix is a symlink tree (`/var/jb` → `/`) at image-build time, which is
-   low-risk and is the standard trick, or a rootful NewTerm build.
-
-**Recommendation: drop NewTerm from the default fetch** and treat it as a
-separate task. It is the one piece of the layer that cannot be made to work by
-adjusting dependencies, and shipping it would cost a debug cycle for nothing.
+So the terminal is solved: NewTerm 2.5 + Cephei, both in the fetch list.
 
 ### Open
 

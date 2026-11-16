@@ -157,11 +157,18 @@ up, and what is still open:
   before any other check (`task_for_pid_posix_check` in `bsd/vm/vm_unix.c`); no
   MAC policy in this tree implements `mpo_proc_check_get_task`, so the MACF gate
   returns allow. Its system deps are all in the 14.3 rootfs.
-- **NewTerm does not work, and is no longer fetched by default.** It links
-  `libswiftUniformTypeIdentifiers.dylib` hard, and that dylib does not exist on
-  14.3 — `UniformTypeIdentifiers` arrived in 14.5, and the framework here has
-  only `Info.plist`. It is also the *rootless* build: it spawns
-  `/var/jb/usr/bin/login`, and a rootful jailbreak has no `/var/jb`.
+- **The terminal is NewTerm 2.5, not 3.0.** NewTerm 3 links
+  `libswiftUniformTypeIdentifiers.dylib` hard — a dylib that does not exist on
+  14.3, since `UniformTypeIdentifiers` arrived in 14.5 — and it is the *rootless*
+  build (`/var/jb/usr/bin/login`). NewTerm 2.5 is `LC_VERSION_MIN_IPHONEOS 10.0`,
+  spawns `/usr/bin/login`, and every Swift dylib it links hard is in
+  `org.swift.libswift`. It needs Cephei, which libhooker's
+  `Provides: mobilesubstrate` satisfies.
+- **The 14.3 rootfs already has the Taurine bootstrap.** Its `dpkg` status is
+  byte-identical to the tarball (58 packages, same sha256), `/usr/bin/dpkg`
+  matches, and Sileo 2.3 is already installed. So the image step skips the
+  bootstrap and only adds what is genuinely missing: libswift, libhooker, the
+  apt sources, OpenSSH and `s9net`.
 - **None of it has run on hardware.** The device is in repair; every line is
   static analysis.
 

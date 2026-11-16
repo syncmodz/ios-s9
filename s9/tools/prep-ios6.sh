@@ -72,10 +72,16 @@ trap cleanup EXIT
 mount -t hfsplus -o rw,force "$loop" "$mnt"
 
 # Taurine's bootstrap (iOS 14, iphoneos-arm): /usr, /Library/dpkg, apt, dpkg,
-# bash/zsh. This is what the Taurine app unpacks to / on a real device; we do
-# it here so the image boots with a working package manager already in place.
-# Note it ships as .tar.gz that is really zstd, so let tar detect it.
-tar -xpf "$jb/bootstrap.tar.gz" --numeric-owner --keep-directory-symlink -C "$mnt"
+# bash/zsh. This is what the Taurine app unpacks to / on a real device.
+#
+# SKIP IT if the image already has one: the ios14 rootfs ships the same
+# bootstrap (dpkg status is byte-identical, 58 packages, sha256 2748249d...).
+# Unpacking over it would rewrite 2908 files and the dpkg database for nothing.
+if [ -f "$mnt/Library/dpkg/status" ]; then
+	echo "== bootstrap: already present in the image, skipping"
+else
+	tar -xpf "$jb/bootstrap.tar.gz" --numeric-owner --keep-directory-symlink -C "$mnt"
+fi
 
 # libhooker + safemode + Sileo + the Swift runtime in place from the first boot
 # (dpkg registers them later). libhooker is the iOS 14 injection layer; ElleKit
@@ -84,12 +90,13 @@ tar -xpf "$jb/bootstrap.tar.gz" --numeric-owner --keep-directory-symlink -C "$mn
 # without it Sileo dies at launch. Each deb's data.tar is xz or zst depending on
 # the build, so extract with whatever the member name says.
 for d in "$jb/debs"/*.deb; do
-	case "$d" in *sileo*|*libhooker*|*safemode*|*preferenceloader*|*libswift*)
+	case "$d" in *sileo*|*libhooker*|*safemode*|*preferenceloader*|*libswift*|*cephei*|*newterm*)
 		m=$(ar t "$d" | grep -E '^data\.tar') || continue
 		case "$m" in
 		*.zst) ar p "$d" "$m" | zstd -dc | tar -xp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
 		*.xz)  ar p "$d" "$m" | tar -xJp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
 		*.gz)  ar p "$d" "$m" | tar -xzp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
+		*.lzma) ar p "$d" "$m" | xz -dc --format=lzma | tar -xp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
 		*)     ar p "$d" "$m" | tar -xp --numeric-owner --keep-directory-symlink -C "$mnt" ;;
 		esac
 		;;

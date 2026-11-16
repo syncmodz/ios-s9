@@ -69,17 +69,22 @@ dl "$ODYSSEY_REPO/debs/preferenceloader_3.0.3_iphoneos-arm.deb"              4-p
 # Taurine's.
 dl "https://apt.procurs.us/pool/main/iphoneos-arm64/1700/openssh/openssh-server_9.7p1-1_iphoneos-arm.deb" 5-openssh-server.deb
 dl "https://apt.procurs.us/pool/main/iphoneos-arm64/1700/openssh/openssh-client_9.7p1-1_iphoneos-arm.deb" 6-openssh-client.deb
-# NewTerm is NOT fetched by default. Two blockers, both real:
-#   1. it links libswiftUniformTypeIdentifiers.dylib HARD, and that dylib does
-#      not exist on iOS 14.3 -- UniformTypeIdentifiers arrived in 14.5, and the
-#      framework here has only Info.plist, no binary. org.swift.libswift cannot
-#      supply it (built for the 12/13/14 generation).
-#   2. this build is ROOTLESS: it spawns /var/jb/usr/bin/login, and a rootful
-#      jailbreak has no /var/jb.
-# Set S9_NEWTERM=1 to fetch it anyway (e.g. to test a /var/jb symlink tree).
-if [ "${S9_NEWTERM:-0}" = 1 ]; then
-	dl "https://repo.chariz.com/debs/ws.hbang.newterm3_3.0~beta1_iphoneos-arm.deb" 7-newterm.deb
-fi
+# NewTerm 2.5, NOT 3.0. NewTerm 3 is unusable here for two independent reasons:
+# it links libswiftUniformTypeIdentifiers.dylib HARD (that dylib does not exist
+# on 14.3 -- UniformTypeIdentifiers arrived in 14.5 and the framework here has
+# only Info.plist), and it is the ROOTLESS build (spawns /var/jb/usr/bin/login;
+# a rootful jailbreak has no /var/jb).
+#
+# NewTerm 2.5 is the right one: LC_VERSION_MIN_IPHONEOS 10.0, it spawns
+# /usr/bin/login (rootful, present in the rootfs), and every Swift dylib it
+# links HARD is in org.swift.libswift. Its Swift deps are also mostly weak.
+dl "https://repo.chariz.com/debs/ws.hbang.newterm2_2.5_iphoneos-arm.deb" 7-newterm.deb
+
+# Cephei (ws.hbang.common) is NewTerm 2's UI framework. It declares
+# mobilesubstrate, which libhooker Provides (= 99.4), and it links
+# CydiaSubstrate, which libhooker ships as
+# /Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate.
+dl "https://repo.chariz.com/debs/ws.hbang.common_1.16_iphoneos-arm.deb" 9-cephei.deb
 
 echo "== ios-s9's own iOS pieces (this repo's release; source in s9/ios-tools) =="
 REL=${S9_RELEASE:-https://github.com/syncmodz/ios-s9/releases/download/s9-2026.10.24}
