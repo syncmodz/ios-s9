@@ -95,6 +95,58 @@ Every claim below was verified against the actual binaries, not assumed.
 | Does the kernel enforce `minos`? | **no** — `mach_loader.c` only reads `LC_BUILD_VERSION` to detect simulator binaries, and only on x86_64 |
 | Does dyld-852.2 enforce `minos`? | **no** — it parses it for version APIs and dylib compat checks, never compares it to the OS version |
 
+### libhooker — audited
+
+| check | result |
+| --- | --- |
+| `data.tar` contents | `/etc/rc.d/libhooker`, `/usr/libexec/libhooker/{inject_criticald,libsyringe,libsyringe-13,libsyringe-14}`, `/usr/lib/TweakInject.dylib`, `/Library/TweakInject/` |
+| minos | `inject_criticald` 13.7, `libsyringe` 13.7, `libsyringe-13` 13.7, **`libsyringe-14` 14.4** |
+| `libhooker.dylib` / `TweakInject.dylib` (newabi) | minos 14.0, arm64 + arm64e |
+| system deps | `libc++.1.dylib`, `libobjc.A.dylib`, `libSystem.B.dylib`, Foundation, CoreFoundation — all present in the 14.3 rootfs |
+| `inject_criticald` needs | `mach_vm_write`/`mach_vm_protect` on a foreign task, i.e. `task_for_pid` |
+| `task_for_pid` as root | **passes without entitlements.** `task_for_pid_posix_check` in `bsd/vm/vm_unix.c` returns TRUE for `kauth_cred_issuser`, before any other test |
+| MACF gate | `mac_proc_check_get_task` uses `MAC_CHECK`, which starts at 0; no policy in this tree implements `mpo_proc_check_get_task`, so it returns 0 (allow) |
+| libhooker selection | `libsyringe` compares `kCFCoreFoundationVersionNumber` against 1664.0 and picks `libsyringe-14` above it; 14.3 is above it |
+
+So libhooker's injection path is expected to work: it runs as root, root passes
+`task_for_pid`, and no MAC policy blocks it. The one unknown is `libsyringe-14`'s
+14.4 build, as above.
+
+### NewTerm — audited, and it will not work as shipped
+
+| check | result |
+| --- | --- |
+| minos | 14.0 — correct for us |
+| declared deps | `firmware (>= 14.0)`, `zsh \| bash \| fish`, `coreutils`, `ncurses`, `system-cmds` |
+| dep resolution | zsh 5.8-5 ✓, bash 5.1.008 ✓, coreutils ✓, system-cmds ✓, `ncurses` satisfied by `libncursesw6 6.2-1` (`Provides: ncurses (= 6.2-1)`) ✓ |
+| **hard Swift links** | 11, including **`libswiftUniformTypeIdentifiers.dylib`** and `libswiftos.dylib` |
+| `libswiftos` | present in `org.swift.libswift` ✓ |
+| **`libswiftUniformTypeIdentifiers`** | **missing everywhere.** `org.swift.libswift` does not have it, and iOS 14.3's `UniformTypeIdentifiers.framework` contains only `Info.plist` and `_CodeSignature` — **no binary at all** |
+| bundled Swift | `Frameworks/libswift_Concurrency.dylib` (LC_VERSION_MIN_IPHONEOS 7.0) ✓ |
+| **root escalation path** | it spawns **`/var/jb/usr/bin/login`** — the *rootless* jailbreak prefix. This rootfs is rootful and has no `/var/jb`. `/usr/bin/login` exists, but NewTerm does not look there |
+
+Two blockers, and they are different in kind:
+
+1. **`libswiftUniformTypeIdentifiers.dylib` does not exist on iOS 14.3.** The
+   framework's binary is the Swift module, so with `UIKit`/Foundation present
+   but that one missing, dyld fails the app at launch. `org.swift.libswift`
+   cannot help: it was built for the iOS 12/13/14 generation, before
+   `UniformTypeIdentifiers` was introduced in **iOS 14.5**. This is the same
+   class of problem as `libsyringe-14`'s 14.4 — the package expects 14.5+.
+   Workarounds are either patching the binary's load command out (needs
+   `install_name_tool` and hoping no symbol is actually called) or finding a
+   newer Swift runtime, which reintroduces the same 14.5 problem.
+
+2. **The `/var/jb` path is rootless.** NewTerm 3.0~beta1 in this repo is the
+   rootless build. A rootful iOS 14 jailbreak has no `/var/jb`; binaries live at
+   `/usr/bin`. So even if it launched, the terminal would not get a shell.
+   The fix is a symlink tree (`/var/jb` → `/`) at image-build time, which is
+   low-risk and is the standard trick, or a rootful NewTerm build.
+
+**Recommendation: drop NewTerm from the default fetch** and treat it as a
+separate task. It is the one piece of the layer that cannot be made to work by
+adjusting dependencies, and shipping it would cost a debug cycle for nothing.
+
 ### Open
 
 1. **`libsyringe-14` is built for iOS 14.4.** Its `LC_BUILD_VERSION` says

@@ -153,6 +153,15 @@ up, and what is still open:
 - **`jailbreakd` runs without having patched the kernel.** On a real device
   Taurine exploits first. It is off the critical path (libhooker carries its own
   injector) and is not kept alive, so a crash is logged once.
+- **libhooker should work.** It runs as root, and root passes `task_for_pid`
+  before any other check (`task_for_pid_posix_check` in `bsd/vm/vm_unix.c`); no
+  MAC policy in this tree implements `mpo_proc_check_get_task`, so the MACF gate
+  returns allow. Its system deps are all in the 14.3 rootfs.
+- **NewTerm does not work, and is no longer fetched by default.** It links
+  `libswiftUniformTypeIdentifiers.dylib` hard, and that dylib does not exist on
+  14.3 — `UniformTypeIdentifiers` arrived in 14.5, and the framework here has
+  only `Info.plist`. It is also the *rootless* build: it spawns
+  `/var/jb/usr/bin/login`, and a rootful jailbreak has no `/var/jb`.
 - **None of it has run on hardware.** The device is in repair; every line is
   static analysis.
 
