@@ -211,11 +211,61 @@ do 14.3 falha e o do 16 nem é tentado. Duas hipóteses a separar:
 quebrado e o do 16 funcionava — aí o `MobileGestaltHelper` do 16 (que roda, `sel 8` e
 `sel 28`) é a diferença.
 
-**Estado das duas:** o binário do 14.3 está aqui (`usr/libexec/MSUEarlyBootTask`, 72 KB,
-três ocorrências de `BootManifestHash`, importa `_MGCopyAnswer`). O do 16 **não** — não
-tenho o rootfs 20H392 localmente, só o 18C66. Então (a) não foi respondida nesta sessão;
-fica como a próxima verificação, e precisa do rootfs do 16 (ou do `.app`/binário extraído
-da imagem que já rodou).
+**Estado das duas:** resolvidas nesta sessão, extraindo o binário do iOS 16 do
+`work/iosroot/ios16-root-v2.img` (HFSX, lido com `work/hfslocal.py`, que reaproveita o
+B-tree do `s9hfs.py` trocando a camada adb por um arquivo local).
+
+**Hipótese (a) está morta.** Os dois `MSUEarlyBootTask` têm o **mesmo** código de gestalt:
+ambos importam `_MGCopyAnswer`, ambos têm as strings `Failed to query gestalt for the
+BootManifestHash`, `Unable to get path for booted OS data` e o formato `%s/%s-MSUData`.
+Não é uma build diferente que pergunta onde a outra não perguntava.
+
+**Hipótese (b) confirmada, e a causa é o ADT — mas não o hash, o nó `chosen`.** A prova
+está na mensagem de sucesso:
+
+| | `Content from the ramdisk will be present at` |
+| --- | --- |
+| iOS 16 (`evidence-20261029`) | **1×** — imprimiu o caminho, logo o gestalt respondeu |
+| iOS 14.3 (`log33.txt`) | **0×** — nunca chegou lá |
+
+O mesmo binário, o mesmo código, resultados opostos. Seguindo a cadeia:
+
+`libMobileGestalt.dylib` (`0x18f37cc98`) mostra de onde a chave sai:
+
+```
+IODeviceTree:/defaults
+IODeviceTree:/chosen/secure-boot-hashes   <-- aqui
+sfr-manifest-hash
+crypto-hash-method
+boot-manifest-hash
+Unable to copy the bootManifestHash
+```
+
+O gestalt não lê a propriedade `boot-manifest-hash` solta: ele lê o dicionário
+**`secure-boot-hashes` sob `/chosen`** e tira a chave de dentro. E os dois ADTs diferem
+exatamente aí:
+
+```
+work/ipsw/d22ap.adt   (Apple, da IPSW)   tem "chosen" e tem "secure-boot-hashes"
+s9port/out/s9.adt     (gerado pelo port) tem "chosen", NAO tem "secure-boot-hashes"
+```
+
+O `mkadt.py` até cria uma propriedade `boot-manifest-hash`
+(`tools/mkadt.py:57`, `BOOT_MANIFEST_HASH = sha384(b'sweet boot manifest')`) — e esse
+valor sintético **chega a ser usado**, está no path do preboot no `log33.txt:127`. Mas
+ele fica numa propriedade plana que o gestalt não consulta. O gestalt quer o nó
+`/chosen/secure-boot-hashes`, e esse o `mkadt.py` não cria.
+
+**Então:** o `MobileGestaltHelper` responde nil para `BootManifestHash`, o
+`MSUEarlyBootTask` falha, e o cache do gestalt
+(`…/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist`,
+que também não existe na imagem) nunca é populado.
+
+**Ação concreta:** fazer o `mkadt.py` emitir `/chosen` com um filho
+`secure-boot-hashes` contendo o `boot-manifest-hash` — em vez da propriedade plana. É
+mudança de ferramenta de build, testável e sem tocar no aparelho. Vale copiar o formato
+literal do `d22ap.adt` (`0x4afc`), que tem o nó com `name = "secure-boot-hashes"` e
+`AAPL,phandle`.
 
 O teste do `sweetnull=...,keybagd` continua valendo, mas por outro motivo: ver o que o
 keybagd faz depois de `setupUserSessionStart` — se constrói o cache do gestalt ou morre
