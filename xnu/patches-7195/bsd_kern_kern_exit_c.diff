@@ -1,0 +1,110 @@
+--- a/bsd/kern/kern_exit.c	2026-10-31 19:09:32
++++ b/bsd/kern/kern_exit.c	2026-11-14 06:59:41
+@@ -75,6 +75,7 @@
+ #include <machine/reg.h>
+ #include <machine/psl.h>
+ #include <stdatomic.h>
++#include <arm64/sweet_early.h>
+ 
+ #include "compat_43.h"
+ 
+@@ -877,7 +878,67 @@
+ 	struct uthread *ut;
+ 	int error = 0;
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
+ 	/*
++	 * SWEET (7195 port): every process death in one line of the persistent
++	 * console log (printf reaches the ring through _cnputs). A daemon that
++	 * dies between launchd's spawn and its first kernel call was otherwise
++	 * invisible: containermanagerd printed nothing on any channel, leaving
++	 * unknown whether it ran at all.
++	 */
++	if (p->p_pid != 0) {
++		printf("EXIT %s pid=%d status=%d\n",
++		    p->p_comm, p->p_pid, WEXITSTATUS(rv));
++		/*
++		 * SWEET (7195 port): WEXITSTATUS alone hides a death by signal.
++		 * Every crash here (backboardd's NSException) reported status=0;
++		 * the signal half of the wait word is WTERMSIG. Print the raw word
++		 * too so both halves are readable without guessing.
++		 */
++		if (WIFSIGNALED(rv)) {
++			printf("EXIT %s pid=%d killed_by_signal=%d raw=0x%x\n",
++			    p->p_comm, p->p_pid, WTERMSIG(rv), rv);
++		}
++		/*
++		 * SWEET (7195 port): arm the recovery cookie on a daemon death.
++		 *
++		 * The BCB writer used to hang off the panic path only, and this
++		 * port never panics: the kernel stays alive with SpringBoard mute
++		 * (verified — log29 has zero "SWEET EARLY PANIC" and live HID
++		 * lines at the end). So the cookie never got written and every
++		 * round still needed somebody to press keys.
++		 *
++		 * A dying daemon is the signal we actually have. backboardd and
++		 * containermanagerd are the two that decide whether the system can
++		 * draw; once either has died k times, the boot is not going to
++		 * reach a UI, so write the BCB and reset into TWRP.
++		 */
++		{
++			static volatile unsigned int sweet_deaths;
++			extern void sweet_bcb_request_recovery(void);
++			extern void sweet_early_disable(void);
++			extern void sweet_reset_into_recovery(void) __dead2;
++
++			if (strncmp(p->p_comm, "backboardd", 10) == 0 ||
++			    strncmp(p->p_comm, "containermanager", 16) == 0 ||
++			    strncmp(p->p_comm, "SpringBoard", 11) == 0) {
++				if (sweet_deaths < 64) {
++					sweet_deaths++;
++				}
++				printf("SWEET BCB: %s died (%u so far)\n",
++				    p->p_comm, sweet_deaths);
++				if (sweet_deaths >= 4) {
++					printf("SWEET BCB: giving up on this boot, going to recovery\n");
++					sweet_early_disable();
++					sweet_bcb_request_recovery();
++					sweet_reset_into_recovery();
++				}
++			}
++		}
++	}
++#endif
++
++	/*
+ 	 * If a thread in this task has already
+ 	 * called exit(), then halt any others
+ 	 * right here.
+@@ -1039,7 +1100,31 @@
+ 	 *
+ 	 * The first condition is necessary because abort_with_reason()/payload() use SIGABRT
+ 	 * (which normally triggers a core) but may indicate that no crash report should be created.
++	 */
++	/*
++	 * SWEET (7195 port): the console crash report, from the ios-sweet
++	 * line (0043/0051). sweet_crash_log() was compiled into this tree
++	 * but nothing called it, so every daemon death was silent: no
++	 * registers, no backtrace, and no heap strings (which is where an
++	 * uncaught NSException's REASON lives -- abort() only carries the
++	 * type). Called on the exiting thread, before the task is torn down
++	 * and while the heap is still mapped.
++	 *
++	 * This runs BEFORE the gate below on purpose. That gate starts with
++	 * "no OS_REASON_FLAG_NO_CRASH_REPORT", and libc++abi's abort() sets
++	 * exactly that flag on the reason -- so for every C++ uncaught
++	 * exception this block was never reached, which is why five logs with
++	 * 8 SEGV and 2 SIGTRAP contain zero "CRASH" lines. The flag exists to
++	 * suppress Apple's crash reporter, not our console dump.
+ 	 */
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	if (p == current_proc() &&
++	    (WTERMSIG(rv) == SIGABRT || WTERMSIG(rv) == SIGTRAP || WTERMSIG(rv) == SIGSEGV)) {
++		extern void sweet_crash_log(const char *, int, int, uint64_t, uint64_t);
++		sweet_crash_log(p->p_comm, p->p_pid, WTERMSIG(rv), 0, 0);
++	}
++#endif
++
+ 	if (!(PROC_HAS_EXITREASON(p) && (PROC_EXITREASON_FLAGS(p) & OS_REASON_FLAG_NO_CRASH_REPORT)) &&
+ 	    (hassigprop(WTERMSIG(rv), SA_CORE) || ((p->p_csflags & CS_KILLED) != 0) ||
+ 	    (PROC_HAS_EXITREASON(p) && (PROC_EXITREASON_FLAGS(p) &

@@ -1,0 +1,39 @@
+--- a/bsd/conf/Makefile.template	2026-10-31 19:09:32
++++ b/bsd/conf/Makefile.template	2026-11-09 08:58:29
+@@ -43,6 +43,36 @@
+ 	-DBSD_KERNEL_PRIVATE -DLP64_DEBUG=0 \
+         -Warray-bounds-pointer-arithmetic
+ SFLAGS+= -include meta_features.h
++
++# This provider is built into SWEET; other boards use their normal kext.
++ifeq ($(CURRENT_MACHINE_CONFIG),SWEET)
++# SWEET: NFSSERVER/NFSCLIENT must reach the compiler's -D list. The `options`
++# lines in config/MASTER do not land in CONFIG_DEFINES in this line, so
++# nfs_conf.h left CONFIG_NFS undefined and nfs_subs.c compiled to an empty
++# object. Both halves are needed: the server code keeps nfs_serv/nfs_socket
++# happy, and the client half (nfs_subs.c under CONFIG_NFS_CLIENT) is where
++# nfs_debug_ctl, nfs_printf, nfs_dump_mbuf, the xb_* helpers and
++# nfs_mountroot actually live.
++#
++# -D alone is not enough: meta_features.h is force-included after the -D flags
++# and pulls in nfsclient.h, which this tree generates as "#define NFSCLIENT 0".
++# sweet_nfs_client.h is force-included after that header and wins.
++CFLAGS+= -DNFSSERVER -DNFSCLIENT -include $(SRCROOT)/bsd/conf/sweet_nfs_client.h
++SWEET_PTHREAD_ROOT = $(SRCROOT)/bsd/pthread/sweet_libpthread
++SWEET_PTHREAD_INC = -I$(SWEET_PTHREAD_ROOT) -I$(SWEET_PTHREAD_ROOT)/private -I$(SWEET_PTHREAD_ROOT)/include
++sweet_pthread_init.o_INCFLAGS = $(SWEET_PTHREAD_INC)
++sweet_pthread_support.o_INCFLAGS = $(SWEET_PTHREAD_INC)
++sweet_pthread_synch.o_INCFLAGS = $(SWEET_PTHREAD_INC)
++
++# Apple OSS HFS built in (bsd/sweet_hfs): compiled like the kext, see sweet_hfs_compat.h.
++# The compat header must come after the kernel's -D options, hence _CFLAGS_ADD.
++SWEET_HFS_ROOT = $(SRCROOT)/bsd/sweet_hfs
++SWEET_HFS_OBJS = BTree.o BTreeAllocate.o BTreeMiscOps.o BTreeNodeOps.o BTreeNodeReserve.o BTreeScanner.o BTreeTreeOps.o BTreeWrapper.o CatalogUtilities.o FileExtentMapping.o FileIDsServices.o MacOSStubs.o UnicodeWrappers.o VolumeAllocation.o hfs_attrlist.o hfs_btreeio.o hfs_catalog.o hfs_chash.o hfs_cnode.o hfs_cprotect.o hfs_endian.o hfs_extents.o hfs_fsinfo.o hfs_hotfiles.o hfs_journal.o hfs_link.o hfs_lookup.o hfs_notification.o hfs_quota.o hfs_readwrite.o hfs_resize.o hfs_search.o hfs_vfsops.o hfs_vfsutils.o hfs_vnops.o hfs_xattr.o rangelist.o hfs_encodinghint.o hfs_encodings.o sweet_hfs_iokit.o
++$(foreach o,$(SWEET_HFS_OBJS),$(eval $(o)_CFLAGS_ADD += -include $(SWEET_HFS_ROOT)/sweet_hfs_compat.h -I$(SWEET_HFS_ROOT) -I$(SWEET_HFS_ROOT)/core))
++# HFSEncodings is a separate kext on Apple with its own allocation counter.
++hfs_encodings.o_CFLAGS_ADD += -Dhfs_allocated=hfs_encodings_allocated
++hfs_encodinghint.o_CFLAGS_ADD += -Dhfs_allocated=hfs_encodings_allocated
++endif
+ 
+ #
+ # Directories for mig generated files

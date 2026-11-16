@@ -1,0 +1,18 @@
+--- a/pexpert/pexpert/arm/protos.h	2026-10-31 19:09:32
++++ b/pexpert/pexpert/arm/protos.h	2026-11-09 22:33:30
+@@ -28,6 +28,15 @@
+ 
+ __BEGIN_DECLS
+ int pe_shmcon_set_child(uint64_t paddr, uint32_t entry);
++
++/*
++ * SWEET (7195 port): GICv3 bring-up, taken from the 8796 line. pe_fiq.c was
++ * absent from this tree entirely, so no interrupt was ever routed from the
++ * distributor to the CPU -- including the architected virtual timer, which
++ * made every timed sleep hang forever. Defined in pexpert/arm/pe_fiq.c.
++ */
++void pe_init_fiq(void);
++extern uint32_t sweet_vtimer_intid;
+ __END_DECLS
+ 
+ #endif /* _PEXPERT_ARM_PROTOS_H */

@@ -1,0 +1,29 @@
+--- a/iokit/bsddev/IOKitBSDInit.cpp	2026-10-31 19:09:32
++++ b/iokit/bsddev/IOKitBSDInit.cpp	2026-10-31 19:54:52
+@@ -658,8 +658,26 @@
+ 				(void)mdevadd(-1, ml_static_ptovirt(ramdParms[0]) >> 12, (unsigned int) (ramdParms[1] >> 12), 0);        /* Initialize it and pass back the device number */
+ 			}
+ 			regEntry->release();                                                            /* Toss the entry */
++		}
++	}
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++//
++//	SWEET: root on a GPT partition of the internal UFS (bsd/dev/sweet_ufs.c)
++//
++	if (strcmp(rdBootVar, "ufsroot0") == 0) {
++		extern int sweet_ufs_rootdev(dev_t *dev);
++		OSSafeReleaseNULL(matching);
++		int ufs_error = sweet_ufs_rootdev(root);
++		if (ufs_error) {
++			panic("IOFindBSDRoot: SWEET UFS root %s unavailable: %d", rdBootVar, ufs_error);
+ 		}
++		strlcpy(rootName, rdBootVar, rootNameSize);
++		IOLog("BSD root: %s, major %d, minor %d\n", rootName, major(*root), minor(*root));
++		*oflags = 0;
++		goto iofrootx;
+ 	}
++#endif
+ 
+ //
+ //	Now check if we are trying to root on a memory device

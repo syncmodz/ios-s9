@@ -1,0 +1,10 @@
+--- a/osfmk/conf/files.arm64	2026-10-31 19:09:32
++++ b/osfmk/conf/files.arm64	2026-10-31 20:02:44
+@@ -33,6 +33,7 @@
+ osfmk/arm/arm_timer.c		standard
+ osfmk/arm/arm_init.c	standard
+ osfmk/arm64/arm_vm_init.c	standard
++osfmk/arm64/sweet_early.c	standard
+ osfmk/arm/io_map.c		standard
+ osfmk/arm64/loose_ends.c	standard
+ osfmk/arm/locks_arm.c	standard

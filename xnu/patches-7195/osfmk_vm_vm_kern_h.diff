@@ -1,0 +1,17 @@
+--- a/osfmk/vm/vm_kern.h	2026-10-31 19:09:32
++++ b/osfmk/vm/vm_kern.h	2026-11-09 02:44:00
+@@ -102,6 +102,14 @@
+ #define KMA_COMPRESSOR  0x400   /* Pages belonging to the compressor are not on the paging queues, nor are they counted as wired. */
+ #define KMA_ATOMIC      0x800
+ #define KMA_ZERO        0x1000
++/*
++ * SWEET (7195 port): the 8796 line names a data-buffer account (KMA_DATA =
++ * KMEM_DATA). This line predates the KMEM_* enum, so the Sweet DMA drivers
++ * keep their call sites with a no-op value instead of a new account.
++ */
++#ifndef KMA_DATA
++#define KMA_DATA        0
++#endif
+ #define KMA_PAGEABLE    0x2000
+ #define KMA_KHEAP       0x4000  /* Pages belonging to zones backing one of kalloc_heap. */
+ 

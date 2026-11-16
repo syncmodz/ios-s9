@@ -1,0 +1,22 @@
+--- a/bsd/vfs/vfs_conf.c	2026-10-31 19:09:32
++++ b/bsd/vfs/vfs_conf.c	2026-11-10 13:37:20
+@@ -228,7 +228,19 @@
+ 		.vfc_typenum = FT_MOCKFS,
+ 		.vfc_refcount = 0,
+ 		.vfc_flags = MNT_LOCAL,
++		/*
++		 * SWEET (7195 port): this entry lives in the STATIC table, so it is
++		 * ordered ahead of every filesystem added later with vfs_fsadd() --
++		 * including HFS, which sweet_hfs_register() adds from bsd_init.
++		 * vfs_mountroot() stops at the first filesystem that mounts, and
++		 * mockfs accepts any device, so it won every time: the boot ended up
++		 * with a mock root (EXECFS fs=mockfs) and exec of /sbin/launchd
++		 * resolved to a fake node whose size was the whole partition.
++		 * mockfs is a test filesystem; it must never claim the root here.
++		 */
++#if !defined(ARM64_BOARD_CONFIG_SWEET)
+ 		.vfc_mountroot = mockfs_mountroot,
++#endif
+ 		.vfc_next = NULL,
+ 		.vfc_reserved1 = 0,
+ 		.vfc_reserved2 = 0,

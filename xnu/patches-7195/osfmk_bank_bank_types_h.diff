@@ -1,0 +1,21 @@
+--- a/osfmk/bank/bank_types.h	2026-10-31 19:09:32
++++ b/osfmk/bank/bank_types.h	2026-11-11 14:06:25
+@@ -42,7 +42,18 @@
+ #define BANK_ORIGINATOR_PID     0x1
+ #define BANK_PERSONA_TOKEN      0x2
+ #define BANK_PERSONA_ID         0x3
++#define BANK_PERSONA_ADOPT_ANY  0x4
+ 
++/*
++ * SWEET (7195 port): taken from the 8796 line. Without this bit in a bank
++ * task's flags, bank_task_can_adopt_persona() refuses every persona handoff
++ * over a Mach voucher, so a daemon can never pick up the personal persona it
++ * was spawned into. That is the other half of the containermanagerd failure:
++ * it asks UserManagement for its user identity, the voucher carries no usable
++ * persona, and the identity comes back empty.
++ */
++#define PROC_PERSONA_INFO_FLAG_ADOPTION_ALLOWED 0x1
++
+ struct proc_persona_info {
+ 	uint64_t unique_pid;
+ 	int32_t  pid;

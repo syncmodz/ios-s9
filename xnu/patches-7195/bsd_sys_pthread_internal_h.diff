@@ -1,0 +1,15 @@
+--- a/bsd/sys/pthread_internal.h	2026-10-31 19:09:32
++++ b/bsd/sys/pthread_internal.h	2026-10-31 19:54:52
+@@ -34,7 +34,12 @@
+ 
+ struct ksyn_waitq_element {
+ #if __LP64__
++	#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/* libpthread-514.100.2 includes the trailing kwe_uth pointer. */
++	char opaque[56];
++#else
+ 	char opaque[48];
++#endif
+ #else
+ 	char opaque[32];
+ #endif

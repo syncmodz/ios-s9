@@ -1,0 +1,323 @@
+--- a/bsd/kern/sys_persona.c	2026-10-31 19:09:32
++++ b/bsd/kern/sys_persona.c	2026-11-15 03:22:55
+@@ -46,34 +46,64 @@
+ extern kern_return_t bank_get_bank_ledger_thread_group_and_persona(void *voucher,
+     void *bankledger, void **banktg, uint32_t *persona_id);
+ 
++#define PERSONA_INFO_V1_SIZE offsetof(struct kpersona_info, persona_uid)
++#define PERSONA_INFO_V2_SIZE sizeof(struct kpersona_info)
++
+ static int
+ kpersona_copyin(user_addr_t infop, struct kpersona_info *kinfo)
+ {
+ 	uint32_t info_v = 0;
++	size_t kinfo_size;
+ 	int error;
+ 
++	memset(kinfo, 0, sizeof(struct kpersona_info));
++	/* v2 field: the caller may pass a v1 buffer that does not cover it. */
++	kinfo->persona_uid = KAUTH_UID_NONE;
++
+ 	error = copyin(infop, &info_v, sizeof(info_v));
+ 	if (error) {
+ 		return error;
+ 	}
+ 
+-	/* only support a single version of the struct for now */
+-	if (info_v != PERSONA_INFO_V1) {
++	/*
++	 * SWEET (7195 port): accept both layouts, exactly as the 8796 line does.
++	 *
++	 * This is the second half of the containermanagerd failure. It crashes
++	 * in -[MCMUserIdentityCache _lock_resync] with "Could not obtain persona
++	 * attributes after exhausting retries" because it enumerates personas
++	 * through kpersona_find (listAllPersonaWithAttributes) and that path
++	 * called this function, which used to reject anything but v1 with
++	 * EINVAL. Both kpersona_info and kpersona_find take a kpersona_info, so
++	 * fixing only the copyout side was not enough.
++	 */
++	switch (info_v) {
++	case PERSONA_INFO_V1:
++		kinfo_size = PERSONA_INFO_V1_SIZE;
++		break;
++	case PERSONA_INFO_V2:
++		kinfo_size = PERSONA_INFO_V2_SIZE;
++		break;
++	default:
+ 		return EINVAL;
+ 	}
+ 
+-	error = copyin(infop, kinfo, sizeof(*kinfo));
++	error = copyin(infop, kinfo, kinfo_size);
++	if (error) {
++		return error;
++	}
+ 
+ 	/* enforce NULL termination on strings */
+ 	kinfo->persona_name[MAXLOGNAME] = 0;
++	kinfo->persona_info_version = info_v;
+ 
+-	return error;
++	return 0;
+ }
+ 
+ static int
+ kpersona_copyout(struct kpersona_info *kinfo, user_addr_t infop)
+ {
+ 	uint32_t info_v;
++	size_t kinfo_size;
+ 	int error;
+ 
+ 	error = copyin(infop, &info_v, sizeof(info_v));
+@@ -81,13 +111,48 @@
+ 		return error;
+ 	}
+ 
+-	/* only support a single version of the struct for now */
+-	/* TODO: in the future compare info_v to kinfo->persona_info_version */
+-	if (info_v != PERSONA_INFO_V1) {
++	/*
++	 * SWEET (7195 port): accept both versions, as the 8796 line does.
++	 *
++	 * This tree answered EINVAL to anything but v1. iOS 14.3's
++	 * containermanagerd asks for v2 and retries; after the retries run out
++	 * it crashes with "Could not obtain persona attributes after exhausting
++	 * retries" (brk at +0x6580). That crash is why it never registers the
++	 * shared SystemGroup, which is why backboardd aborts on a nil URL and
++	 * SpringBoard never draws.
++	 *
++	 * The caller states the version it wants in the first word of the
++	 * buffer, and gets exactly that much back.
++	 */
++	switch (info_v) {
++	case PERSONA_INFO_V1:
++		kinfo_size = PERSONA_INFO_V1_SIZE;
++		break;
++	case PERSONA_INFO_V2:
++		kinfo_size = PERSONA_INFO_V2_SIZE;
++		break;
++	default:
+ 		return EINVAL;
+ 	}
+ 
+-	error = copyout(kinfo, infop, sizeof(*kinfo));
++	kinfo->persona_info_version = info_v;
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): this is the answer every caller actually receives
++	 * (info, pidinfo and find all copy out through here). The earlier probe
++	 * sat in kpersona_alloc and therefore only ever showed persona creation,
++	 * which is why every reading was uid=-101: that is the value the CALLER
++	 * passes when allocating, not what the kernel returns.
++	 */
++	{
++		char nm[32];
++		proc_selfname(nm, sizeof(nm));
++		printf("PRESP %s req_v=%u id=%d uid=%d type=%d name='%s'\n",
++		    nm, info_v, kinfo->persona_id, kinfo->persona_uid,
++		    kinfo->persona_type, kinfo->persona_name);
++	}
++#endif
++	error = copyout(kinfo, infop, kinfo_size);
+ 	return error;
+ }
+ 
+@@ -128,7 +193,7 @@
+ 	}
+ 
+ 	error = 0;
+-	persona = persona_alloc(id, login, kinfo.persona_type, pna_path, &error);
++	persona = persona_alloc(id, login, kinfo.persona_type, pna_path, kinfo.persona_uid, &error);
+ 	if (!persona) {
+ 		if (pna_path != NULL) {
+ 			zfree(ZV_NAMEI, pna_path);
+@@ -140,6 +205,16 @@
+ 	pna_path = NULL;
+ 
+ 	error = persona_init_begin(persona);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): prove where the persona id/uid lands. pna_uid is
++	 * assigned inside persona_init_begin(); if it is still NONE here, the
++	 * assignment never ran and userspace will read KAUTH_UID_NONE.
++	 */
++	printf("PALLOC login='%s' want_id=%d err=%d got_id=%d pna_uid=%d\n",
++	    login ? login : "(null)", (int)kinfo.persona_id, error,
++	    (int)persona->pna_id, (int)persona_get_uid(persona));
++#endif
+ 	if (error) {
+ 		goto out_persona_err;
+ 	}
+@@ -170,7 +245,25 @@
+ 		goto out_persona_err;
+ 	}
+ 
++	/*
++	 * SWEET (7195 port): refresh every field the kernel now knows before
++	 * copying the answer back. This used to set only persona_id, leaving the
++	 * rest of kinfo as the caller supplied it -- and a caller allocating a
++	 * persona passes persona_uid = KAUTH_UID_NONE, so the alloc reply (and
++	 * any log reading it) said "uid = -101" for a persona that actually owns
++	 * uid 501. Userspace then treated the brand-new persona as identity-less.
++	 */
+ 	kinfo.persona_id = persona->pna_id;
++	kinfo.persona_uid = persona_get_uid(persona);
++	kinfo.persona_type = persona->pna_type;
++	kinfo.persona_gid = persona_get_gid(persona);
++	{
++		size_t __ng = 0;
++		persona_get_groups(persona, &__ng, kinfo.persona_groups, NGROUPS);
++		kinfo.persona_ngroups = (uint32_t)__ng;
++	}
++	kinfo.persona_gmuid = persona_get_gmuid(persona);
++	strncpy(kinfo.persona_name, persona->pna_login, MAXLOGNAME);
+ 	error = kpersona_copyout(&kinfo, infop);
+ 	if (error) {
+ 		goto out_persona_err;
+@@ -243,6 +336,54 @@
+ 
+ 	persona = current_persona_get();
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): containermanagerd builds the user identity it hands
++	 * out from the kernel persona. If current_persona_get() is NULL here it
++	 * reports "continuing without system container support" and backs out,
++	 * which is exactly the nil path backboardd then dies on. One line tells
++	 * apart "no persona exists" from "persona exists but lookup fails".
++	 *
++	 * The cap used to be a single global counter of 12, and the first twelve
++	 * askers of the boot are UserEventAgent, wifid, identityservices, ... So
++	 * by the time containermanagerd ran, the budget was spent and its answer
++	 * was never printed -- the one process this probe exists for was the one
++	 * it could not see. Give every process its own small budget instead, and
++	 * give containermanagerd a larger one because its retry loop is what we
++	 * are measuring.
++	 */
++	{
++		char nm[32];
++		proc_selfname(nm, sizeof(nm));
++		{
++			static char pg_seen[16][32];
++			static unsigned int pg_used[16];
++			static unsigned int pg_slots;
++			unsigned int slot = 16, i;
++			for (i = 0; i < pg_slots; i++) {
++				if (strncmp(pg_seen[i], nm, sizeof(pg_seen[i])) == 0) {
++					slot = i;
++					break;
++				}
++			}
++			if (slot == 16 && pg_slots < 16) {
++				slot = pg_slots++;
++				strlcpy(pg_seen[slot], nm, sizeof(pg_seen[slot]));
++			}
++			if (slot < 16) {
++				unsigned int cap = strncmp(nm, "containermanager", 16) == 0 ? 64 : 4;
++				if (pg_used[slot] < cap) {
++					pg_used[slot]++;
++					printf("PGET %s persona=%s id=%d n=%u\n", nm,
++					    persona != NULL ? "present" : "NULL",
++					    persona != NULL ? (int)persona->pna_id : -1,
++					    pg_used[slot]);
++				}
++			}
++		}
++	}
++#endif
++
+ 	if (!persona) {
+ 		return ESRCH;
+ 	}
+@@ -343,7 +484,13 @@
+ 	    persona->pna_login);
+ 
+ 	memset(&kinfo, 0, sizeof(kinfo));
+-	kinfo.persona_info_version = PERSONA_INFO_V1;
++	/*
++	 * SWEET (7195 port): versions and the v2-only field are filled for the
++	 * newest layout; kpersona_copyout() trims the answer to whatever size
++	 * the caller asked for and stamps its version back.
++	 */
++	kinfo.persona_info_version = PERSONA_INFO_V2;
++	kinfo.persona_uid = persona_get_uid(persona);
+ 	kinfo.persona_id = persona->pna_id;
+ 	kinfo.persona_type = persona->pna_type;
+ 	kinfo.persona_gid = persona_get_gid(persona);
+@@ -358,6 +505,7 @@
+ 	 */
+ 	strncpy(kinfo.persona_name, persona->pna_login, MAXLOGNAME);
+ 
++
+ 	persona_put(persona);
+ 
+ 	error = kpersona_copyout(&kinfo, infop);
+@@ -389,7 +537,13 @@
+ 	}
+ 
+ 	memset(&kinfo, 0, sizeof(kinfo));
+-	kinfo.persona_info_version = PERSONA_INFO_V1;
++	/*
++	 * SWEET (7195 port): versions and the v2-only field are filled for the
++	 * newest layout; kpersona_copyout() trims the answer to whatever size
++	 * the caller asked for and stamps its version back.
++	 */
++	kinfo.persona_info_version = PERSONA_INFO_V2;
++	kinfo.persona_uid = persona_get_uid(persona);
+ 	kinfo.persona_id = persona->pna_id;
+ 	kinfo.persona_type = persona->pna_type;
+ 	kinfo.persona_gid = persona_get_gid(persona);
+@@ -443,6 +597,53 @@
+ 
+ 	k_idlen = u_idlen;
+ 	error = persona_find_all(login, kinfo.persona_id, (persona_type_t)kinfo.persona_type, persona, &k_idlen);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): containermanagerd enumerates personas through this
++	 * call and crashes when the answer is empty ("Did not receive any
++	 * persona attributes"). Print the exact query and the hit count: it
++	 * distinguishes "asks with a filter that nothing matches" from "no
++	 * persona is visible to it at all".
++	 */
++	{
++		char nm[32];
++		proc_selfname(nm, sizeof(nm));
++		{
++			/*
++			 * Same per-process budget as PGET above, and for the same
++			 * reason: a global cap of 12 was consumed entirely by
++			 * launchd's own lookups (12 identical
++			 * "PFIND launchd ... type=6 found=1" lines in every log),
++			 * so containermanagerd's enumeration -- the one that
++			 * decides whether it crashes -- was never printed.
++			 */
++			static char pf_seen[16][32];
++			static unsigned int pf_used[16];
++			static unsigned int pf_slots;
++			unsigned int slot = 16, i;
++			for (i = 0; i < pf_slots; i++) {
++				if (strncmp(pf_seen[i], nm, sizeof(pf_seen[i])) == 0) {
++					slot = i;
++					break;
++				}
++			}
++			if (slot == 16 && pf_slots < 16) {
++				slot = pf_slots++;
++				strlcpy(pf_seen[slot], nm, sizeof(pf_seen[slot]));
++			}
++			if (slot < 16) {
++				unsigned int cap = strncmp(nm, "containermanager", 16) == 0 ? 64 : 4;
++				if (pf_used[slot] < cap) {
++					pf_used[slot]++;
++					printf("PFIND %s err=%d login='%s' id=%d type=%d max=%zu found=%zu n=%u\n",
++					    nm, error, login ? login : "(null)",
++					    kinfo.persona_id, kinfo.persona_type, u_idlen, k_idlen,
++					    pf_used[slot]);
++				}
++			}
++		}
++	}
++#endif
+ 	if (error) {
+ 		goto out;
+ 	}

@@ -1,0 +1,262 @@
+--- a/bsd/vfs/vfs_syscalls.c	2026-10-31 19:09:32
++++ b/bsd/vfs/vfs_syscalls.c	2026-11-15 03:28:34
+@@ -4552,9 +4552,218 @@
+ 	    fileproc_alloc_init, NULL, retval);
+ 
+ 	return error;
++}
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++static int mkdir1at(vfs_context_t ctx, user_addr_t path, struct vnode_attr *vap, int fd, enum uio_seg segflg);
++
++/*
++ * SWEET (7195 port): transcribed from the 8796 line. /private/var/containers
++ * and the SystemGroup container directories do not exist in the single-HFS
++ * conversion (on a device they are created at first boot on the Data volume).
++ * vfs_lookup.c redirects the /private/var/containers tree to /private/var/tmp
++ * so it stays shaped; this creates it lazily on the first ENOENT/ENOTDIR of a
++ * container path. Without it containermanagerd cannot register SystemGroup,
++ * BSSystemSharedResourcesDirectory() returns nil and backboardd dies on
++ * -[NSURL initFileURLWithPath:]: nil string parameter.
++ */
++static int
++sweet_fixup_mkdir(vfs_context_t ctx, const char *spath)
++{
++	struct vnode_attr va;
++	int err;
++	VATTR_INIT(&va);
++	VATTR_SET(&va, va_mode, 0755 & ACCESSPERMS);
++	err = mkdir1at(ctx, (user_addr_t)spath, &va, AT_FDCWD, UIO_SYSSPACE);
++	printf("SWEET fixup mkdir %s err=%d\n", spath, err);
++	return err;
+ }
+ 
++/*
++ * SWEET (7195 port): write a small plist on the root filesystem from kernel
++ * context. Used to seed the Setup Assistant's "already done" state, which
++ * otherwise puts this device in the activate-a-real-iPhone flow: it has no
++ * valid activation record and never will, so the only correct outcome here is
++ * to skip Setup entirely and go straight to SpringBoard.
++ */
+ static int
++sweet_fixup_write(vfs_context_t ctx, const char *spath, const char *data, size_t len)
++{
++	vnode_t vp = NULL;
++	uio_t auio;
++	int err;
++
++	err = vnode_open(spath, O_CREAT | O_TRUNC | FWRITE, 0644, 0, &vp, ctx);
++	if (err) {
++		printf("SWEET fixup write %s open err=%d\n", spath, err);
++		return err;
++	}
++	auio = uio_create(1, 0, UIO_SYSSPACE, UIO_WRITE);
++	if (auio == NULL) {
++		vnode_close(vp, FWRITE, ctx);
++		return ENOMEM;
++	}
++	uio_addiov(auio, (user_addr_t)(uintptr_t)data, (user_size_t)len);
++	err = VNOP_WRITE(vp, auio, IO_NOCACHE, ctx);
++	uio_free(auio);
++	vnode_close(vp, FWRITE, ctx);
++	printf("SWEET fixup write %s err=%d\n", spath, err);
++	return err;
++}
++
++static void
++sweet_fixup(vfs_context_t ctx)
++{
++	static volatile unsigned int sweet_fixup_done = 0;
++	if (sweet_fixup_done) {
++		return;
++	}
++	sweet_fixup_done = 1;
++	printf("SWEET fixup: start\n");
++	/*
++	 * SWEET (7195 port): the keybag directories do not exist in the
++	 * single-HFS conversion -- on a device they live on the data volume.
++	 * keybagd's early-boot setup writes /private/var/keybags/usersession.kb
++	 * and, without this directory, gives up with "LoadAllUserSessions:
++	 * diskLoadUserSessions failed" and exits. No user session means no user
++	 * identity, which is what the container manager needs before it can
++	 * register the shared SystemGroup; without that registration
++	 * backboardd's BSSystemSharedResourcesDirectory() returns nil and the
++	 * window server never starts. The Bergamota port hit the same wall and
++	 * documents it as the fix that unblocked backboardd.
++	 */
++	(void)sweet_fixup_mkdir(ctx, "/private/var/keybags");
++	/*
++	 * containermanagerd keeps its own log here and the Bergamota port notes
++	 * it stat()s both the mobile and root paths before writing. Missing them
++	 * is not fatal, but the log is the only place MCM says why it refuses a
++	 * lookup, and we have no other way to read its reason.
++	 */
++	(void)sweet_fixup_mkdir(ctx, "/private/var/mobile/Library/Logs");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/mobile/Library/Logs/MobileContainerManager");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/root/Library");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/root/Library/Logs");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/root/Library/Logs/MobileContainerManager");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/db");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/preferences");
++	/*
++	 * logd's log stores. On a device these are made at restore time with
++	 * owner _logd (272) and a .migrated marker; libtrace checks all three
++	 * and, when they are missing, asks a helper over XPC and then dies
++	 * ("BUG IN LIBTRACE: Failed to migrate directory"). The 14.3 logd
++	 * carries that same string, and in every log it is started and never
++	 * exits -- it is stuck in exactly this path.
++	 *
++	 * The mode and owner matter as much as the existence: 0751 for
++	 * diagnostics, 0755 for uuidtext and timesync, all 272:272. mkdir1at
++	 * here cannot set the owner, so the mode is what this can fix; the
++	 * owner is left to the rootfs (see the note in the report).
++	 */
++	(void)sweet_fixup_mkdir(ctx, "/private/var/db/diagnostics");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/db/uuidtext");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/db/diagnostics/timesync");
++	(void)sweet_fixup_write(ctx, "/private/var/db/diagnostics/.migrated", "", 0);
++	(void)sweet_fixup_write(ctx, "/private/var/db/uuidtext/.migrated", "", 0);
++	(void)sweet_fixup_write(ctx, "/private/var/db/diagnostics/timesync/.migrated", "", 0);
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Bundle");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Data");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Data/System");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Temp");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared/SystemGroup");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.lsd.iconscache");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.lsd.iconscache/Library");
++	(void)sweet_fixup_mkdir(ctx, "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.lsd.iconscache/Library/Caches");
++	/*
++	 * Setup Assistant: this is not a phone that can be activated, so the
++	 * "hello"/language/activate flow is a dead end. Skip it the way the
++	 * iOS 16 port does: seed the finished state for BOTH domains the
++	 * assistant consults, in the preferences directory the daemons actually
++	 * read, plus the migration marker.
++	 *
++	 * On a real device the assistant's state lives in its own container and
++	 * is served by cfprefsd; there are no containers here, so the plain
++	 * files under /private/var/mobile/Library/Preferences are what
++	 * CFPreferences resolves. The previous attempt wrote only
++	 * com.apple.purplebuddy.plist, which is the daemon's own domain -- the
++	 * UI state behind the "hello" screen is com.apple.SetupAssistant.
++	 *
++	 * vfs_lookup.c redirects that directory to /private/var/tmp/
++	 * mobilePreferences, so it must exist before the writes.
++	 */
++	{
++		(void)sweet_fixup_mkdir(ctx, "/private/var/tmp/mobilePreferences");
++		(void)sweet_fixup_mkdir(ctx, "/private/var/mobile/Library/Preferences");
++
++#define SWEET_PLIST_HEAD \
++	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" \
++	"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" " \
++	"\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n" \
++	"<plist version=\"1.0\"><dict>\n"
++		/* The UI state: this is what gates the hello screen. */
++		static const char setupassistant[] =
++		    SWEET_PLIST_HEAD
++		    "<key>SetupDone</key><true/>\n"
++		    "<key>SetupFinishedAllSteps</key><true/>\n"
++		    "<key>SetupVersion</key><integer>11</integer>\n"
++		    "<key>daemonizeNeedsToRun</key><false/>\n"
++		    "<key>SetupHasCompleted</key><true/>\n"
++		    "<key>DidShowLanguageSelection</key><true/>\n"
++		    "</dict></plist>\n";
++		static const char buddy[] =
++		    SWEET_PLIST_HEAD
++		    "<key>SetupDone</key><true/>\n"
++		    "<key>SetupFinishedAllSteps</key><true/>\n"
++		    "<key>SetupVersion</key><integer>11</integer>\n"
++		    "<key>daemonizeNeedsToRun</key><false/>\n"
++		    "</dict></plist>\n";
++		static const char notbackedup[] =
++		    SWEET_PLIST_HEAD
++		    "<key>ShouldRunDiagnosticsMiniBuddy</key><false/>\n"
++		    "<key>ShouldRunHSA2MiniBuddy</key><false/>\n"
++		    "<key>ShouldRunKeychainSyncMiniBuddy</key><false/>\n"
++		    "<key>ShouldRunMesaMiniBuddy</key><false/>\n"
++		    "<key>ShouldRunPaymentMiniBuddy</key><false/>\n"
++		    "<key>ShouldRunStandardMiniBuddy</key><false/>\n"
++		    "<key>SilentICDPUpgrade</key><false/>\n"
++		    "</dict></plist>\n";
++		/*
++		 * DataMigration must not run for an hour on every boot.
++		 *
++		 * The value has to be THIS rootfs's build, not the iOS 16 one it
++		 * was copied from. The 14.3 rootfs reports 18C66
++		 * (/System/Library/CoreServices/SystemVersion.plist); writing
++		 * 20H392 there tells DataMigrator the system was upgraded from a
++		 * build it has never seen, which is the opposite of the marker's
++		 * purpose.
++		 */
++		static const char migration[] =
++		    SWEET_PLIST_HEAD
++		    "<key>LastSystemVersion</key><string>18C66</string>\n"
++		    "</dict></plist>\n";
++		(void)sweet_fixup_write(ctx,
++		    "/private/var/mobile/Library/Preferences/com.apple.SetupAssistant.plist",
++		    setupassistant, sizeof(setupassistant) - 1);
++		(void)sweet_fixup_write(ctx,
++		    "/private/var/mobile/Library/Preferences/com.apple.purplebuddy.plist",
++		    buddy, sizeof(buddy) - 1);
++		(void)sweet_fixup_write(ctx,
++		    "/private/var/mobile/Library/Preferences/com.apple.purplebuddy.notbackedup.plist",
++		    notbackedup, sizeof(notbackedup) - 1);
++		(void)sweet_fixup_write(ctx,
++		    "/private/var/mobile/Library/Preferences/com.apple.migration.plist",
++		    migration, sizeof(migration) - 1);
++#undef SWEET_PLIST_HEAD
++	}
++	printf("SWEET fixup: done\n");
++}
++#endif /* ARM64_BOARD_CONFIG_SWEET */
++
++static int
+ openat_internal(vfs_context_t ctx, user_addr_t path, int flags, int mode,
+     int fd, enum uio_seg segflg, int *retval)
+ {
+@@ -4582,6 +4791,40 @@
+ 
+ 	error = open1at(ctx, ndp, flags, vap, fileproc_alloc_init, NULL,
+ 	    retval, fd);
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/* SWEET (7195 port): lazy SystemGroup fixup on first container ENOENT,
++	 * as in the 8796 line (m47). The containers tree is absent in the
++	 * single-HFS conversion; see sweet_fixup() above. */
++	if (error == ENOENT || error == ENOTDIR) {
++		char fbuf[MAXPATHLEN];
++		size_t fc = 0;
++		boolean_t have = FALSE;
++		if (path != 0) {
++			if (segflg == UIO_SYSSPACE) {
++				strlcpy(fbuf, (const char *)path, MAXPATHLEN);
++				have = TRUE;
++			} else if (copyinstr(path, fbuf, sizeof(fbuf), &fc) == 0) {
++				have = TRUE;
++			}
++		}
++		/*
++		 * SWEET (7195 port): build the missing /private/var tree on the
++		 * FIRST miss inside it, not only on the SystemGroup path.
++		 *
++		 * keybagd reads /private/var/keybags/usersession.kb during its
++		 * early-boot setup, which happens before anything touches
++		 * containers. Waiting for the SystemGroup trigger meant the
++		 * directory was created after the daemon that needs it had already
++		 * given up ("LoadAllUserSessions: diskLoadUserSessions failed"),
++		 * and every later boot repeated the miss because the first boot
++		 * never got far enough to create it.
++		 */
++		if (have && strncmp(fbuf, "/private/var/", 13) == 0) {
++			sweet_fixup(ctx);
++		}
++	}
++#endif
+ 
+ 	kheap_free(KHEAP_TEMP, __open_data, sizeof(*__open_data));
+ 

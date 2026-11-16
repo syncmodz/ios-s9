@@ -1,0 +1,20 @@
+--- a/osfmk/kern/kalloc.h	2026-10-31 19:09:32
++++ b/osfmk/kern/kalloc.h	2026-11-09 02:13:22
+@@ -370,6 +370,17 @@
+ 	(kheap_free)(__kfree_heap, (void *)__kfree_elem, __kfree_size); \
+ })
+ 
++/*
++ * SWEET (7195 port): the 8796 tree spells these kalloc_data()/kfree_data().
++ * Same heap, same flags; keep the call sites in the platform drivers and in
++ * the string-search diagnostic identical to the tree they came from.
++ */
++#define kalloc_data(size, flags) \
++	kheap_alloc(KHEAP_DATA_BUFFERS, size, flags)
++
++#define kfree_data(elem, size) \
++	kheap_free(KHEAP_DATA_BUFFERS, elem, size)
++
+ #define kheap_free_addr(heap, elem) ({ \
+ 	_Static_assert(sizeof(elem) == sizeof(void *), "elem isn't pointer sized"); \
+ 	__auto_type __kfree_heap = (heap); \

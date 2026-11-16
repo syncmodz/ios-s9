@@ -1,0 +1,60 @@
+--- a/iokit/Kernel/IOStartIOKit.cpp	2026-10-31 19:09:32
++++ b/iokit/Kernel/IOStartIOKit.cpp	2026-11-09 22:00:40
+@@ -26,6 +26,7 @@
+  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+  */
+ 
++#include <arm64/sweet_early.h>
+ #include <libkern/c++/OSUnserialize.h>
+ #include <libkern/c++/OSKext.h>
+ #include <libkern/section_keywords.h>
+@@ -73,6 +74,16 @@
+ IOKitInitializeTime( void )
+ {
+ 	mach_timespec_t         t;
++
++	/*
++	 * SWEET (7195 port): instrumented. bsd_init() stalled after mark 106
++	 * (bsd_bufferinit done) and never printed 107, so this function is the
++	 * prime suspect. Three marks split it into its parts: entry, after the
++	 * IORTC wait (which has no provider on this target and therefore always
++	 * burns the full 30 s timeout), and after clock_initialize_calendar()
++	 * (which calls kernel_sysctlbyname before sysctl_mib_init() has run).
++	 */
++	sweet_early_mark(121, "IOKitInitializeTime entered");
+ 
+ 	t.tv_sec = 30;
+ 	t.tv_nsec = 0;
+@@ -86,8 +97,10 @@
+ 	IOService::waitForService(
+ 		IOService::resourceMatching("IONVRAM"), &t );
+ #endif
++	sweet_early_mark(122, "IORTC wait returned");
+ 
+ 	clock_initialize_calendar();
++	sweet_early_mark(123, "clock_initialize_calendar done");
+ }
+ 
+ void
+@@ -171,9 +184,13 @@
+ 	// initialise as basic OS services.
+ 	//
+ 	IOLibInit();
++	sweet_early_mark(85, "IOLibInit done");
+ 	OSlibkernInit();
++	sweet_early_mark(86, "OSlibkernInit done");
+ 	IOMachPortInitialize();
++	sweet_early_mark(87, "IOMachPortInitialize done");
+ 	devsw_init();
++	sweet_early_mark(88, "devsw_init done");
+ 
+ 	gIOProgressBackbufferKey  = OSSymbol::withCStringNoCopy(kIOProgressBackbufferKey);
+ 	gIORemoveOnReadProperties = OSSet::withObjects((const OSObject **) &gIOProgressBackbufferKey, 1);
+@@ -189,6 +206,7 @@
+ 		panic("Failed to initialize IOKit root nub");
+ 	}
+ 	gRootNub->attach(NULL);
++	sweet_early_mark(89, "gRootNub attached");
+ 
+ 	/* If the bootstrap segment set up a function to record startup
+ 	 * extensions, call it now.

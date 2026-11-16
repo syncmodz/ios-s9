@@ -1,0 +1,9 @@
+--- a/pexpert/conf/files.arm64	2026-10-31 19:09:32
++++ b/pexpert/conf/files.arm64	2026-11-09 22:37:57
+@@ -1,5 +1,6 @@
+ pexpert/arm/pe_bootargs.c              standard
+ pexpert/arm/pe_consistent_debug.c      standard
++pexpert/arm/pe_fiq.c                   standard
+ pexpert/arm/pe_identify_machine.c      standard
+ pexpert/arm/pe_init.c                  standard
+ pexpert/arm/pe_kprintf.c               standard

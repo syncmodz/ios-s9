@@ -1,0 +1,395 @@
+--- a/osfmk/kern/startup.c	2026-10-31 19:09:32
++++ b/osfmk/kern/startup.c	2026-11-15 02:32:52
+@@ -117,6 +117,12 @@
+ #include <machine/pmap.h>
+ #include <machine/commpage.h>
+ #include <machine/machine_routines.h>
++#if defined(SWEET)
++#include <arm64/sweet_early.h>
++#define SWEET_MARK(n, s) sweet_early_mark(n, s)
++#else
++#define SWEET_MARK(n, s) do { } while (0)
++#endif
+ #include <libkern/version.h>
+ #include <sys/codesign.h>
+ #include <sys/kdebug.h>
+@@ -376,11 +382,14 @@
+ 	char            namep[16];
+ 
+ 	printf("%s\n", version); /* log kernel version */
++	SWEET_MARK(32, "kernel_bootstrap entered");
+ 
+ 	scale_setup();
++	SWEET_MARK(33, "scale_setup done");
+ 
+ 	kernel_bootstrap_log("vm_mem_bootstrap");
+ 	vm_mem_bootstrap();
++	SWEET_MARK(34, "vm_mem_bootstrap done");
+ 
+ 	machine_info.memory_size = (uint32_t)mem_size;
+ #if XNU_TARGET_OS_OSX
+@@ -415,15 +424,19 @@
+ 
+ 	kernel_bootstrap_log("console_init");
+ 	console_init();
++	SWEET_MARK(35, "console_init done");
+ 
+ 	kernel_bootstrap_log("stackshot_init");
+ 	stackshot_init();
++	SWEET_MARK(38, "stackshot_init done");
+ 
+ 	kernel_bootstrap_log("sched_init");
+ 	sched_init();
++	SWEET_MARK(39, "sched_init done");
+ 
+ 	kernel_bootstrap_log("waitq_bootstrap");
+ 	waitq_bootstrap();
++	SWEET_MARK(40, "waitq_bootstrap done");
+ 
+ #if CONFIG_MACF
+ 	kernel_bootstrap_log("mac_policy_init");
+@@ -438,18 +451,23 @@
+ 	 */
+ 	kernel_bootstrap_log("PMAP_ACTIVATE_KERNEL");
+ 	PMAP_ACTIVATE_KERNEL(master_cpu);
++	SWEET_MARK(36, "PMAP_ACTIVATE_KERNEL done");
+ 
+ 	kernel_bootstrap_log("mapping_free_prime");
+ 	mapping_free_prime();                                           /* Load up with temporary mapping blocks */
++	SWEET_MARK(41, "mapping_free_prime done");
+ 
+ 	kernel_bootstrap_log("machine_init");
+ 	machine_init();
++	SWEET_MARK(37, "machine_init done");
+ 
+ 	kernel_bootstrap_log("thread_machine_init_template");
+ 	thread_machine_init_template();
++	SWEET_MARK(42, "thread_machine_init_template done");
+ 
+ 	kernel_bootstrap_log("clock_init");
+ 	clock_init();
++	SWEET_MARK(43, "clock_init done");
+ 
+ 	/*
+ 	 *	Initialize the IPC, task, and thread subsystems.
+@@ -457,27 +475,35 @@
+ #if CONFIG_THREAD_GROUPS
+ 	kernel_bootstrap_log("thread_group_init");
+ 	thread_group_init();
++	SWEET_MARK(55, "thread_group_init done");
+ #endif
+ 
+ #if CONFIG_COALITIONS
+ 	kernel_bootstrap_log("coalitions_init");
+ 	coalitions_init();
++	SWEET_MARK(56, "coalitions_init done");
+ #endif
+ 
++
+ 	kernel_bootstrap_log("task_init");
+ 	task_init();
++	SWEET_MARK(44, "task_init done");
+ 
+ 	kernel_bootstrap_log("thread_init");
+ 	thread_init();
++	SWEET_MARK(45, "thread_init done");
+ 
+ 	kernel_bootstrap_log("restartable_init");
+ 	restartable_init();
++	SWEET_MARK(46, "restartable_init done");
+ 
+ 	kernel_bootstrap_log("workq_init");
+ 	workq_init();
++	SWEET_MARK(47, "workq_init done");
+ 
+ 	kernel_bootstrap_log("turnstiles_init");
+ 	turnstiles_init();
++	SWEET_MARK(48, "turnstiles_init done");
+ 
+ #if CONFIG_ATM
+ 	/* Initialize the Activity Trace Resource Manager. */
+@@ -503,6 +529,7 @@
+ 	/* initialize exceptions */
+ 	kernel_bootstrap_log("exception_init");
+ 	exception_init();
++	SWEET_MARK(49, "exception_init done");
+ 
+ #if CONFIG_SCHED_SFI
+ 	kernel_bootstrap_log("sfi_init");
+@@ -515,6 +542,7 @@
+ 
+ 	kernel_bootstrap_log("kernel_thread_create");
+ 	result = kernel_thread_create((thread_continue_t)kernel_bootstrap_thread, NULL, MAXPRI_KERNEL, &thread);
++	SWEET_MARK(50, "kernel_thread_create done");
+ 
+ 	if (result != KERN_SUCCESS) {
+ 		panic("kernel_bootstrap: result = %08X\n", result);
+@@ -531,8 +559,10 @@
+ 	thread_deallocate(thread);
+ 
+ 	kernel_bootstrap_log("load_context - done");
++	SWEET_MARK(51, "calling load_context");
+ 	load_context(thread);
+ 	/*NOTREACHED*/
++	/*NOTREACHED*/
+ }
+ 
+ SECURITY_READ_ONLY_LATE(vm_offset_t) vm_kernel_addrperm;
+@@ -551,10 +581,12 @@
+ 	processor_t             processor = current_processor();
+ 
+ 	kernel_bootstrap_thread_log("idle_thread_create");
++	SWEET_MARK(52, "bootstrap thread running");
+ 	/*
+ 	 * Create the idle processor thread.
+ 	 */
+ 	idle_thread_create(processor);
++	SWEET_MARK(53, "idle_thread_create done");
+ 
+ 	/*
+ 	 * N.B. Do not stick anything else
+@@ -564,21 +596,25 @@
+ 	 */
+ 	kernel_bootstrap_thread_log("sched_startup");
+ 	sched_startup();
++	SWEET_MARK(54, "sched_startup done");
+ 
+ 	/*
+ 	 * Thread lifecycle maintenance (teardown, stack allocation)
+ 	 */
+ 	kernel_bootstrap_thread_log("thread_daemon_init");
+ 	thread_daemon_init();
++	SWEET_MARK(60, "thread_daemon_init done");
+ 
+ 	/* Create kernel map entry reserve */
+ 	vm_kernel_reserved_entry_init();
++	SWEET_MARK(61, "vm_kernel_reserved_entry_init done");
+ 
+ 	/*
+ 	 * Thread callout service.
+ 	 */
+ 	kernel_bootstrap_thread_log("thread_call_initialize");
+ 	thread_call_initialize();
++	SWEET_MARK(62, "thread_call_initialize done");
+ 
+ 	/*
+ 	 * Work interval subsystem initialization.
+@@ -586,6 +622,7 @@
+ 	 */
+ 	kernel_bootstrap_thread_log("work_interval_initialize");
+ 	work_interval_subsystem_init();
++	SWEET_MARK(63, "work_interval_subsystem_init done");
+ 
+ 	/*
+ 	 * Remain on current processor as
+@@ -593,35 +630,42 @@
+ 	 */
+ 	kernel_bootstrap_thread_log("thread_bind");
+ 	thread_bind(processor);
++	SWEET_MARK(64, "thread_bind done");
+ 
+ 	/*
+ 	 * Initialize ipc thread call support.
+ 	 */
+ 	kernel_bootstrap_thread_log("ipc_thread_call_init");
+ 	ipc_thread_call_init();
++	SWEET_MARK(65, "ipc_thread_call_init done");
+ 
+ 	/*
+ 	 * Kick off memory mapping adjustments.
+ 	 */
+ 	kernel_bootstrap_thread_log("mapping_adjust");
+ 	mapping_adjust();
++	SWEET_MARK(66, "mapping_adjust done");
+ 
+ 	/*
+ 	 *	Create the clock service.
+ 	 */
+ 	kernel_bootstrap_thread_log("clock_service_create");
+ 	clock_service_create();
++	SWEET_MARK(67, "clock_service_create done");
+ 
+ 	/*
+ 	 *	Create the device service.
+ 	 */
+ 	device_service_create();
++	SWEET_MARK(68, "device_service_create done");
+ 
+ 	phys_carveout_init();
++	SWEET_MARK(69, "phys_carveout_init done");
+ 
+ #if MACH_KDP
+ 	kernel_bootstrap_log("kdp_init");
+ 	kdp_init();
++	SWEET_MARK(70, "kdp_init done");
+ #endif
+ 
+ #if ALTERNATE_DEBUGGER
+@@ -648,6 +692,7 @@
+ 
+ 	kernel_bootstrap_thread_log("ktrace_init");
+ 	ktrace_init();
++	SWEET_MARK(71, "ktrace_init done");
+ 
+ 	char trace_typefilter[256] = {};
+ 	PE_parse_boot_arg_str("trace_typefilter", trace_typefilter,
+@@ -657,15 +702,18 @@
+ #endif /* KPERF */
+ 	kdebug_init(new_nkdbufs, trace_typefilter,
+ 	    (trace_wrap ? KDOPT_WRAPPING : 0) | KDOPT_ATBOOT);
++	SWEET_MARK(72, "kdebug_init done");
+ 
+ #ifdef  MACH_BSD
+ 	kernel_bootstrap_log("bsd_early_init");
+ 	bsd_early_init();
++	SWEET_MARK(73, "bsd_early_init done");
+ #endif
+ 
+ #ifdef  IOKIT
+ 	kernel_bootstrap_log("PE_init_iokit");
+ 	PE_init_iokit();
++	SWEET_MARK(74, "PE_init_iokit done");
+ #endif
+ 
+ 	assert(ml_get_interrupts_enabled() == FALSE);
+@@ -681,11 +729,13 @@
+ 	ml_spin_debug_clear_self();
+ #endif
+ 	(void) spllo();         /* Allow interruptions */
++	SWEET_MARK(75, "interrupts enabled");
+ 
+ 	/*
+ 	 * This will start displaying progress to the user, start as early as possible
+ 	 */
+ 	initialize_screen(NULL, kPEAcquireScreen);
++	SWEET_MARK(76, "initialize_screen done");
+ 
+ 	/*
+ 	 *	Initialize the shared region module.
+@@ -700,7 +750,63 @@
+ 	kernel_bootstrap_log("vnguard_policy_init");
+ 	vnguard_policy_init();
+ #endif
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): taken from the 8796 line. Built-in AMFI and Sandbox
++	 * MAC policies live in bsd/kern/sweet_amfi.c and were never called here,
++	 * so no vnode ever got mpo_vnode_check_signature run over it: binaries
++	 * never acquired CS_SIGNED and launchd's check_dyld_policy_self() failed
++	 * with "initproc exited -- exit reason namespace 6 subcode 0x9".
++	 *
++	 * mac_policy_register() writes mac_policy_list, which lives in
++	 * __DATA_CONST and turns read-only in machine_lockdown() a few dozen
++	 * lines below, so this has to happen in the same pre-lockdown window
++	 * vnguard_policy_init() uses -- not from bsd_init(), which runs after.
++	 */
++	{
++		extern void sweet_amfi_policy_register(void);
++		kernel_bootstrap_log("sweet_amfi_policy_register");
++		sweet_amfi_policy_register();
++	}
++	/*
++	 * SWEET (7195 port): arm the APSS watchdog as early as the kernel can.
++	 *
++	 * The hangs that cost whole sessions happened before mountroot, and the
++	 * arm in sweet_ufs_init() is after it. ml_io_map() works this early
++	 * (io_map.c falls back to the bootstrap virtual space when kernel_map is
++	 * still null, which is how sweet_spmi.c maps its registers), and the
++	 * timer interrupt is already running by the time this code executes, so
++	 * the pet in rtclock_intr() keeps it fed from here on.
++	 */
++	{
++		extern void sweet_wdt_arm(void);
++		kernel_bootstrap_log("sweet_wdt_arm");
++		sweet_wdt_arm();
++	}
++	/*
++	 * SWEET (7195 port): publish the multiuser config word.
++	 *
++	 * Nothing on this port calls host_set_multiuser_config_flags(), so the
++	 * commpage word stays 0. libdispatch's voucher_get_current_persona reads
++	 * a byte of it and tests bit 0x2 before deciding which persona the caller
++	 * is under; with the word at zero every process takes the "no persona"
++	 * branch without any syscall, which is why containermanagerd's identity
++	 * lookups come back empty and it aborts after its retries.
++	 *
++	 * Single-user device with uid 501 (mobile) as the current user: the UID
++	 * lives in kMultiUserCurrentUserMask. kIsMultiUserDevice (0x80000000)
++	 * must STAY CLEAR -- this is one user, and that bit is what
++	 * persona_proc_adopt() tests before rewriting the session login name.
++	 * The 8796 tree, which draws, leaves both at 0 and still works.
++	 */
++	{
++		extern void commpage_update_multiuser_config(uint32_t);
++		/* kMultiUserCurrentUserMask (arm/cpu_capabilities.h:78); the header
++		 * is not included in this bootstrap file. */
++		commpage_update_multiuser_config(501u & 0x7fffffffu);
++	}
+ #endif
++#endif
+ 
+ #if CONFIG_DTRACE
+ 	kernel_bootstrap_log("dtrace_early_init");
+@@ -711,6 +817,7 @@
+ #ifndef BCM2837
+ 	kernel_bootstrap_log("trust_cache_init");
+ 	trust_cache_init();
++	SWEET_MARK(77, "trust_cache_init done");
+ #endif
+ 
+ 	kernel_startup_initialize_upto(STARTUP_SUB_LOCKDOWN);
+@@ -723,6 +830,7 @@
+ 	 */
+ 	kernel_bootstrap_log("OSKextRemoveKextBootstrap");
+ 	OSKextRemoveKextBootstrap();
++	SWEET_MARK(78, "OSKextRemoveKextBootstrap done");
+ 
+ 	/*
+ 	 * Initialize the globals used for permuting kernel
+@@ -741,20 +849,24 @@
+ 	vm_kernel_addrperm_ext |= 1;
+ 	read_random(&vm_kernel_addrhash_salt, sizeof(vm_kernel_addrhash_salt));
+ 	read_random(&vm_kernel_addrhash_salt_ext, sizeof(vm_kernel_addrhash_salt_ext));
++	SWEET_MARK(94, "addrperm randoms done");
+ 
+ 	/* No changes to kernel text and rodata beyond this point. */
+ 	kernel_bootstrap_log("machine_lockdown");
+ 	machine_lockdown();
++	SWEET_MARK(95, "machine_lockdown done");
+ 
+ #ifdef  IOKIT
+ 	kernel_bootstrap_log("PE_lockdown_iokit");
+ 	PE_lockdown_iokit();
++	SWEET_MARK(96, "PE_lockdown_iokit done");
+ #endif
+ 	/*
+ 	 * max_cpus must be nailed down by the time PE_lockdown_iokit() finishes,
+ 	 * at the latest
+ 	 */
+ 	vm_set_restrictions(machine_info.max_cpus);
++	SWEET_MARK(97, "vm_set_restrictions done");
+ 
+ #ifdef CONFIG_XNUPOST
+ 	kern_return_t result = kernel_list_tests();
+@@ -764,17 +876,20 @@
+ 	}
+ 	kernel_bootstrap_log("kernel_do_post - done");
+ #endif /* CONFIG_XNUPOST */
++	SWEET_MARK(112, "xnupost block done");
+ 
+-
+ #if KPERF
+ 	kperf_init_early();
++	SWEET_MARK(113, "kperf_init_early done");
+ #endif
+ 
+ 	/*
+ 	 *	Start the user bootstrap.
+ 	 */
+ #ifdef  MACH_BSD
++	SWEET_MARK(98, "calling bsd_init");
+ 	bsd_init();
++	SWEET_MARK(99, "bsd_init returned");
+ #endif
+ 
+ 

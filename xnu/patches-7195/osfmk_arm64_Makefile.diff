@@ -1,0 +1,19 @@
+--- a/osfmk/arm64/Makefile	2026-10-31 19:09:32
++++ b/osfmk/arm64/Makefile	2026-11-09 20:17:29
+@@ -39,6 +39,7 @@
+ 	proc_reg.h \
+ 	asm.h \
+ 	tlb.h \
++	sweet_early.h \
+ 	pal_hibernate.h
+ 
+ # These headers will be available with #include <arm64/header_file.h>
+@@ -64,7 +65,7 @@
+ 
+ INSTALL_KF_MD_LCL_LIST = machine_kpc.h machine_remote_time.h monotonic.h pgtrace.h $(ARM_HEADER_FILES)
+ 
+-EXPORT_MD_LIST = machine_cpuid.h machine_kpc.h machine_remote_time.h monotonic.h proc_reg.h pgtrace.h asm.h tlb.h pal_hibernate.h
++EXPORT_MD_LIST = machine_cpuid.h machine_kpc.h machine_remote_time.h monotonic.h proc_reg.h pgtrace.h asm.h tlb.h sweet_early.h pal_hibernate.h
+ 
+ EXPORT_MD_DIR = arm64
+ 

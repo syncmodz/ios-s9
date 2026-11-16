@@ -1,0 +1,140 @@
+--- a/bsd/kern/kern_persona.c	2026-10-31 19:09:32
++++ b/bsd/kern/kern_persona.c	2026-11-15 02:46:12
+@@ -31,6 +31,13 @@
+ #include <pexpert/pexpert.h>
+ 
+ #if CONFIG_PERSONAS
++/*
++ * SWEET (7195 port): the 8796 line includes cpu_capabilities here for
++ * _COMM_PAGE_MULTIUSER_CONFIG below. This tree's port of the same persona
++ * code dropped the include, so the multiuser commpage read below did not
++ * compile.
++ */
++#include <machine/cpu_capabilities.h>
+ #include <machine/atomic.h>
+ 
+ #include <kern/assert.h>
+@@ -70,7 +77,21 @@
+ struct persona *system_persona = NULL;
+ struct persona *proxy_system_persona = NULL;
+ #if !defined(XNU_TARGET_OS_OSX)
+-int unique_persona = 1;
++/*
++ * SWEET (7195 port): default OFF.
++ *
++ * persona_verify_and_set_uniqueness() refuses a second persona of type
++ * SYSTEM or SYSTEM_PROXY with EEXIST, and persona_lookup_and_invalidate()
++ * then refuses to destroy one that is flagged unique -- so once the boot
++ * task has created its system personas, no later process can create them
++ * again. On this port the keybagd boot task creates types 4 and 6
++ * (log33 PRESP lines), and the keybagd DAEMON is the instance that would
++ * recreate them for the usermanagerd service. The 8796 tree, which reaches
++ * SpringBoard, does not have this function at all.
++ *
++ * The boot-arg `unique_persona` can still turn it back on.
++ */
++int unique_persona = 0;
+ #else
+ int unique_persona = 0;
+ #endif
+@@ -135,7 +156,7 @@
+ }
+ 
+ struct persona *
+-persona_alloc(uid_t id, const char *login, persona_type_t type, char *path, int *error)
++persona_alloc(uid_t id, const char *login, persona_type_t type, char *path, uid_t uid, int *error)
+ {
+ 	struct persona *persona;
+ 	int err = 0;
+@@ -196,6 +217,14 @@
+ 	persona->pna_id = id;
+ 	persona->pna_valid = PERSONA_ALLOC_TOKEN;
+ 	persona->pna_path = path;
++	/*
++	 * SWEET (7195 port): carry the caller's uid through to
++	 * persona_init_begin(), which is where the real id is known (the caller
++	 * may have passed PERSONA_ID_NONE). KAUTH_UID_NONE means "no opinion":
++	 * init_begin then falls back to the id, which is what the auto-allocated
++	 * personas need.
++	 */
++	persona->pna_uid = uid;
+ 
+ 	/*
+ 	 * NOTE: this persona has not been fully initialized. A subsequent
+@@ -283,6 +312,24 @@
+ 		goto out;
+ 	}
+ 
++	/*
++	 * SWEET (7195 port): the persona owns the uid the CALLER asked for.
++	 *
++	 * persona_alloc() stored it; the real id is only known here, because the
++	 * caller may have passed PERSONA_ID_NONE and a few lines above chose one.
++	 * persona_get_uid() used to report KAUTH_UID_NONE for every
++	 * auto-allocated persona -- including the mobile one (id 501) that
++	 * containermanagerd needs -- and UserManagement discarded the identity
++	 * for having no uid.
++	 *
++	 * The 8796 line stores the caller's uid verbatim (kern_persona.c:169).
++	 * Falling back to the id only when the caller had no opinion keeps the
++	 * auto-allocated case working, and preserves the "system persona owned by
++	 * nobody" case (id 99, uid UINT_MAX) that
++	 * bank_task_can_adopt_persona() tests for.
++	 */
++	persona->pna_uid = (persona->pna_uid != KAUTH_UID_NONE) ? persona->pna_uid : persona->pna_id;
++
+ 	/* ensure the cred has proper UID/GID defaults */
+ 	kauth_cred_ref(persona->pna_cred);
+ 	tmp_cred = kauth_cred_setuidgid(persona->pna_cred,
+@@ -1001,7 +1048,16 @@
+ 	volatile uint32_t *multiuser_flag_address = (volatile uint32_t *)(uintptr_t)(_COMM_PAGE_MULTIUSER_CONFIG);
+ 	uint32_t multiuser_flags = *multiuser_flag_address;
+ 	/* set the login name of the session */
+-	if (multiuser_flags) {
++	/*
++	 * SWEET (7195 port): test the multiuser DEVICE bit, not the whole word.
++	 *
++	 * startup.c publishes 501 in this word (the current uid), and 501 is
++	 * non-zero, so the old `if (multiuser_flags)` rewrote the session login
++	 * name of every process that adopted a persona. The 8796 line tests
++	 * kIsMultiUserDevice (kern_persona.c:820) and this board is not a
++	 * multiuser device.
++	 */
++	if (multiuser_flags & 0x80000000u) {
+ 		struct session * sessp = proc_session(p);
+ 		if (sessp != SESSION_NULL) {
+ 			session_lock(sessp);
+@@ -1210,16 +1266,27 @@
+ uid_t
+ persona_get_uid(struct persona *persona)
+ {
+-	uid_t uid = UID_MAX;
++	uid_t uid = KAUTH_UID_NONE;
+ 
+-	if (!persona || !persona->pna_cred) {
+-		return UID_MAX;
++	if (!persona) {
++		return KAUTH_UID_NONE;
+ 	}
+ 
++	/*
++	 * SWEET (7195 port): report the persona's own uid, as the 8796 line does,
++	 * instead of the credential's. The credential is the shared default one
++	 * until the first adoption, so the old form made every persona answer
++	 * KAUTH_UID_NONE and userspace discarded the identity.
++	 */
+ 	persona_lock(persona);
+-	if (persona_valid(persona)) {
+-		uid = kauth_cred_getuid(persona->pna_cred);
+-		assert(uid == persona->pna_id);
++	/*
++	 * SWEET (7195 port): answer even while the persona is still finishing
++	 * persona_init_begin(). The id (and therefore the uid) is already final
++	 * there; gating on persona_valid() made every concurrent lookup report
++	 * KAUTH_UID_NONE, which is what userspace sees as "no identity".
++	 */
++	if (persona->pna_uid != KAUTH_UID_NONE) {
++		uid = persona->pna_uid;
+ 	}
+ 	persona_unlock(persona);
+ 

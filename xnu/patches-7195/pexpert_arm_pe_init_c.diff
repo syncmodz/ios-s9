@@ -1,0 +1,36 @@
+--- a/pexpert/arm/pe_init.c	2026-10-31 19:09:32
++++ b/pexpert/arm/pe_init.c	2026-11-09 20:14:49
+@@ -13,6 +13,7 @@
+ #include <pexpert/pe_images.h>
+ #include <kern/sched_prim.h>
+ #include <machine/machine_routines.h>
++#include <arm64/sweet_early.h>
+ #include <arm/caches_internal.h>
+ #include <kern/debug.h>
+ #include <libkern/section_keywords.h>
+@@ -239,6 +240,7 @@
+ 	PE_init_printf(TRUE);
+ 
+ 	printf("iBoot version: %s\n", firmware_version);
++	sweet_early_mark(80, "iBoot version printed");
+ 
+ 	if (kSuccess == SecureDTLookupEntry(0, "/chosen/memory-map", &entry)) {
+ 		boot_progress_element const *bootPict;
+@@ -258,6 +260,7 @@
+ 	}
+ 
+ 	pe_prepare_images();
++	sweet_early_mark(81, "pe_prepare_images done");
+ 
+ 	scale = PE_state.video.v_scale;
+ 	flip = 1;
+@@ -347,7 +350,9 @@
+ 	}
+ 
+ 	InitIOKit(PE_state.deviceTreeHead);
++	sweet_early_mark(83, "InitIOKit returned");
+ 	ConfigureIOKit();
++	sweet_early_mark(84, "ConfigureIOKit returned");
+ }
+ 
+ void

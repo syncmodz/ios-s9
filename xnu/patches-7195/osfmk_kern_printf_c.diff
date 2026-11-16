@@ -1,0 +1,47 @@
+--- a/osfmk/kern/printf.c	2026-10-31 19:09:32
++++ b/osfmk/kern/printf.c	2026-11-15 21:24:29
+@@ -948,12 +948,33 @@
+ 	return vprintf_internal(fmt, ap, __builtin_return_address(0));
+ }
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++/*
++ * SWEET (7195 port): the panic path (backtraces, register dumps) writes
++ * through consdebug_putc*, which bypasses the console's log ring: the
++ * buffered one goes to cnputc() and the unbuffered one straight to _cnputc,
++ * past the ring in _cnputs. So a panic's backtrace never reached the
++ * persistent log, and the only record of a kernel death was whatever the
++ * screen showed.
++ *
++ * ios-flame hit the same wall and fixed it the same way (its patch 0098):
++ * append every character to the lock-free ring in bsd/dev/sweet_ufs.c, which
++ * survives the reset.
++ */
++extern void sweet_log_append(const char *c, int size);
++#endif
++
+ void
+ consdebug_putc(char c)
+ {
+ 	if (!disableConsoleOutput) {
+ 		cnputc(c);
+ 	}
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	else {
++		sweet_log_append(&c, 1);
++	}
++#endif
+ 
+ 	debug_putc(c);
+ 
+@@ -968,6 +989,10 @@
+ 	if (!disableConsoleOutput) {
+ 		cnputc_unbuffered(c);
+ 	}
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/* cnputc_unbuffered goes straight to _cnputc, past the ring in _cnputs. */
++	sweet_log_append(&c, 1);
++#endif
+ 
+ 	debug_putc(c);
+ 

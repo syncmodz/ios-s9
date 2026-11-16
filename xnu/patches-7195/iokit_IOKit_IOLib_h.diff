@@ -1,0 +1,100 @@
+--- a/iokit/IOKit/IOLib.h	2026-10-31 19:09:32
++++ b/iokit/IOKit/IOLib.h	2026-11-09 04:05:42
+@@ -144,6 +144,15 @@
+ 
+ #define IOMallocAligned(size, alignment) IOMallocAligned_internal(KHEAP_DEFAULT, size, alignment)
+ 
++/*
++ * SWEET (7195 port): 8796 names the data-buffer heap variants IOMallocData /
++ * IOMallocZeroData / IOFreeData. This tree has the same heaps but not the
++ * spellings, so the platform drivers keep their original call sites.
++ */
++#define IOMallocData(size)     IOMalloc_internal(KHEAP_DATA_BUFFERS, size)
++#define IOMallocZeroData(size) IOMallocZero_internal(KHEAP_DATA_BUFFERS, size)
++#define IOFreeData(elem, size) kheap_free(KHEAP_DATA_BUFFERS, elem, size)
++
+ #else/* defined(XNU_KERNEL_PRIVATE) */
+ 
+ void * IOMallocAligned(vm_size_t size, vm_offset_t alignment) __attribute__((alloc_size(1)));
+@@ -206,9 +215,20 @@
+ 
+ /*
+  * Typed memory allocation macros. All may block.
++ *
++ * SWEET (7195 port): the 8796 line also spells these with a header type
++ * (IONew(hdr_type, element_type, count)); HFS uses that form. The arity
++ * dispatch below is the 8796 mechanism, and the bodies keep this line's
++ * overflow-checked arithmetic.
+  */
++#define __IOKIT_COUNT_ARGS1(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, N, ...) N
++#define __IOKIT_COUNT_ARGS(...) \
++	__IOKIT_COUNT_ARGS1(, ##__VA_ARGS__, _9, _8, _7, _6, _5, _4, _3, _2, _1, _0)
++#define __IOKIT_DISPATCH1(base, N, ...) __CONCAT(base, N)(__VA_ARGS__)
++#define __IOKIT_DISPATCH(base, ...) \
++	__IOKIT_DISPATCH1(base, __IOKIT_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
+ 
+-#define IONew(type, count)                              \
++#define IONew_2(type, count)                            \
+ ({                                                      \
+     size_t __size;                                      \
+     (os_mul_overflow(sizeof(type), (count), &__size)    \
+@@ -216,7 +236,15 @@
+     : ((type *) IOMalloc(__size)));                     \
+ })
+ 
+-#define IONewZero(type, count)                          \
++#define IONew_3(hdr, type, count)                                   \
++({                                                                  \
++    size_t __size;                                                  \
++    (os_mul_overflow(sizeof(type), (count), &__size)                \
++    ? ((hdr *) NULL)                                                \
++    : ((hdr *) IOMalloc(sizeof(hdr) + __size)));                    \
++})
++
++#define IONewZero_2(type, count)                        \
+ ({                                                      \
+     size_t __size;                                      \
+     (os_mul_overflow(sizeof(type), (count), &__size)    \
+@@ -224,7 +252,15 @@
+     : ((type *) IOMallocZero(__size)));                 \
+ })
+ 
+-#define IODelete(ptr, type, count)                          \
++#define IONewZero_3(hdr, type, count)                               \
++({                                                                  \
++    size_t __size;                                                  \
++    (os_mul_overflow(sizeof(type), (count), &__size)                \
++    ? ((hdr *) NULL)                                                \
++    : ((hdr *) IOMallocZero(sizeof(hdr) + __size)));                \
++})
++
++#define IODelete_3(ptr, type, count)                        \
+ ({                                                          \
+     size_t __size;                                          \
+     if (!os_mul_overflow(sizeof(type), (count), &__size)) { \
+@@ -232,13 +268,18 @@
+     }                                                       \
+ })
+ 
+-#define IOSafeDeleteNULL(ptr, type, count)              \
+-    do {                                                \
+-	if (NULL != (ptr)) {                            \
+-	    IODelete((ptr), type, count);               \
+-	    (ptr) = NULL;                               \
+-	}                                               \
+-    } while (0)                                         \
++#define IODelete_4(ptr, hdr, type, count)                   \
++({                                                          \
++    size_t __size;                                          \
++    if (!os_mul_overflow(sizeof(type), (count), &__size)) { \
++	IOFree(ptr, sizeof(hdr) + __size);                  \
++    }                                                       \
++})
++
++#define IONew(...)             __IOKIT_DISPATCH(IONew, ##__VA_ARGS__)
++#define IONewZero(...)         __IOKIT_DISPATCH(IONewZero, ##__VA_ARGS__)
++#define IODelete(...)          __IOKIT_DISPATCH(IODelete, ##__VA_ARGS__)
++#define IOSafeDeleteNULL(...)  __IOKIT_DISPATCH(IODelete, ##__VA_ARGS__)
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ //

@@ -1,0 +1,50 @@
+--- a/bsd/kern/syscalls.master	2026-10-31 19:09:32
++++ b/bsd/kern/syscalls.master	2026-11-09 06:34:29
+@@ -537,26 +537,15 @@
+ 357	AUE_GETAUDIT_ADDR	ALL	{ int getaudit_addr(struct auditinfo_addr *auditinfo_addr, int length); }
+ 358	AUE_SETAUDIT_ADDR	ALL	{ int setaudit_addr(struct auditinfo_addr *auditinfo_addr, int length); }
+ 359	AUE_AUDITCTL	ALL	{ int auditctl(char *path); }
+-#if CONFIG_WORKQUEUE
+ 360	AUE_NULL	ALL	{ user_addr_t bsdthread_create(user_addr_t func, user_addr_t func_arg, user_addr_t stack, user_addr_t pthread, uint32_t flags) NO_SYSCALL_STUB; }
+ 361	AUE_NULL	ALL	{ int bsdthread_terminate(user_addr_t stackaddr, size_t freesize, uint32_t port, uint32_t sem) NO_SYSCALL_STUB; }
+-#else
+-360	AUE_NULL	ALL	{ int nosys(void); }
+-361	AUE_NULL	ALL	{ int nosys(void); }
+-#endif /* CONFIG_WORKQUEUE */
+ 362	AUE_KQUEUE	ALL	{ int kqueue(void); }
+ 363	AUE_NULL	ALL	{ int kevent(int fd, const struct kevent *changelist, int nchanges, struct kevent *eventlist, int nevents, const struct timespec *timeout); }
+ 364	AUE_LCHOWN	ALL	{ int lchown(user_addr_t path, uid_t owner, gid_t group) NO_SYSCALL_STUB; }
+ 365	AUE_NULL	ALL	{ int nosys(void); }	{ old stack_snapshot }
+-#if CONFIG_WORKQUEUE
+ 366	AUE_NULL	ALL	{ int bsdthread_register(user_addr_t threadstart, user_addr_t wqthread, uint32_t flags, user_addr_t stack_addr_hint, user_addr_t targetconc_ptr, uint32_t dispatchqueue_offset, uint32_t tsd_offset) NO_SYSCALL_STUB; }
+ 367	AUE_WORKQOPEN	ALL	{ int workq_open(void) NO_SYSCALL_STUB; }
+ 368	AUE_WORKQOPS	ALL	{ int workq_kernreturn(int options, user_addr_t item, int affinity, int prio) NO_SYSCALL_STUB; }
+-#else
+-366	AUE_NULL	ALL	{ int nosys(void); }
+-367	AUE_NULL	ALL	{ int nosys(void); }
+-368	AUE_NULL	ALL	{ int nosys(void); }
+-#endif /* CONFIG_WORKQUEUE */
+ 369	AUE_NULL	ALL	{ int kevent64(int fd, const struct kevent64_s *changelist, int nchanges, struct kevent64_s *eventlist, int nevents, unsigned int flags, const struct timespec *timeout); }
+ #if OLD_SEMWAIT_SIGNAL
+ 370     AUE_SEMWAITSIGNAL       ALL     { int __old_semwait_signal(int cond_sem, int mutex_sem, int timeout, int relative, const struct timespec *ts); }
+@@ -669,7 +658,7 @@
+ 432	AUE_NULL	ALL	{ int audit_session_port(au_asid_t asid, user_addr_t portnamep); }
+ 433	AUE_NULL	ALL	{ int pid_suspend(int pid); }
+ 434	AUE_NULL	ALL	{ int pid_resume(int pid); }
+-#if CONFIG_EMBEDDED
++#if CONFIG_EMBEDDED || defined(ARM64_BOARD_CONFIG_SWEET)
+ 435	AUE_NULL	ALL	{ int pid_hibernate(int pid); }
+ #else
+ 435     AUE_NULL        ALL     { int nosys(void); }
+@@ -839,11 +828,7 @@
+ 527	AUE_NULL	ALL	{ int ntp_adjtime(struct timex *tp); }
+ 528	AUE_NULL	ALL	{ int ntp_gettime(struct ntptimeval *ntvp); }
+ 529	AUE_NULL	ALL	{ int os_fault_with_payload(uint32_t reason_namespace, uint64_t reason_code, void *payload, uint32_t payload_size, const char *reason_string, uint64_t reason_flags); }
+-#if CONFIG_WORKQUEUE
+ 530	AUE_WORKLOOPCTL	ALL	{ int kqueue_workloop_ctl(user_addr_t cmd, uint64_t options, user_addr_t addr, size_t sz) NO_SYSCALL_STUB; }
+-#else
+-530	AUE_NULL	ALL	{ int enosys(void); }
+-#endif // CONFIG_WORKQUEUE
+ 531	AUE_NULL	ALL	{ uint64_t __mach_bridge_remote_time(uint64_t local_timestamp); }
+ #if CONFIG_COALITIONS
+ 532 AUE_NULL  ALL { int coalition_ledger(uint32_t operation, uint64_t *cid, void *buffer, size_t *bufsize) NO_SYSCALL_STUB; }

@@ -1,0 +1,18 @@
+--- a/osfmk/arm/trustcache.c	2026-10-31 19:09:32
++++ b/osfmk/arm/trustcache.c	2026-11-09 20:42:50
+@@ -62,7 +62,14 @@
+ 	size_t const len = segSizeEXTRADATA;
+ 
+ 	if (len == 0) {
+-#if XNU_TARGET_OS_OSX
++#if XNU_TARGET_OS_OSX || defined(ARM64_BOARD_CONFIG_SWEET)
++		/*
++		 * SWEET: this board's ABL hands us no EXTRADATA segment, so there is
++		 * no external trust cache to load. The 8796 line treats the same
++		 * condition as non-fatal (its load_static_trust_cache() prints and
++		 * returns), and that kernel reaches SpringBoard, so do the same here
++		 * instead of panicking in the middle of kernel_bootstrap_thread.
++		 */
+ 		printf("No external trust cache found (region len is 0).");
+ #else
+ 		panic("No external trust cache found (region len is 0).");

@@ -1,5 +1,11 @@
 # iOS no Galaxy S9 (SM-G9600, starqlte, SDM845): notas de trabalho
 
+> **O alvo agora é iOS 14.3 (18C66), kernel xnu-7195.** O trabalho de iOS 16
+> (xnu-8796) descrito daqui para baixo foi o que chegou primeiro a uma tela
+> desenhada, e continua valendo como referência: os drivers, o shim e metade dos
+> patches são os mesmos. O kernel que roda hoje está em `../xnu/patches-7195/`.
+> O estado atual do 14.3 está no topo do `README.md` da raiz.
+
 Referência: ios-sweet (`../ref/sweet/ios-sweet-main`, MIT): XNU + userland do iPhone X 16.7.16 no Redmi Note 10 Pro (SM7150).
 Kernel Samsung/LineageOS 20 do S9: `../ref/kernel/android_kernel_samsung_sdm845-lineage-20`.
 Firmware stock: `../ZTO-G9600ZHU9FVF2` (G9600ZHU9FVF2, Android 10).

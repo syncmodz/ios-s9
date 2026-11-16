@@ -1,0 +1,43 @@
+--- a/bsd/vfs/vfs_subr.c	2026-10-31 19:09:32
++++ b/bsd/vfs/vfs_subr.c	2026-11-10 13:31:37
+@@ -78,6 +78,7 @@
+ 
+ #include <sys/param.h>
+ #include <sys/systm.h>
++#include <arm64/sweet_early.h>
+ #include <sys/proc_internal.h>
+ #include <sys/kauth.h>
+ #include <sys/mount_internal.h>
+@@ -1150,12 +1151,23 @@
+ 	 * so keep a local copy for some house keeping.
+ 	 */
+ 	bdevvp_rootvp = rootvp;
++
++	/*
++	 * SWEET (7195 port): the exec of /sbin/launchd resolved to a devfs node
++	 * (EXECFS fs=devfs, mode 700, size = the whole partition), so whatever
++	 * this loop mounted as root is not HFS. Print each candidate and its
++	 * result: which filesystems were tried, and which one won.
++	 */
++	sweet_early_printf("MNTROOT dev=%d scanning", (int)rootdev);
+ 
+ 	for (vfsp = vfsconf; vfsp; vfsp = vfsp->vfc_next) {
+ 		if (vfsp->vfc_mountroot == NULL
+ 		    && !ISSET(vfsp->vfc_vfsflags, VFC_VFSCANMOUNTROOT)) {
+ 			continue;
+ 		}
++
++		sweet_early_printf("MNTROOT try %s rootfn=%d",
++		    vfsp->vfc_name, vfsp->vfc_mountroot != NULL);
+ 
+ 		mp = vfs_rootmountalloc_internal(vfsp, "root_device");
+ 		mp->mnt_devvp = rootvp;
+@@ -1165,6 +1177,8 @@
+ 		} else {
+ 			error = VFS_MOUNT(mp, rootvp, 0, ctx);
+ 		}
++
++		sweet_early_printf("MNTROOT %s err=%d", vfsp->vfc_name, error);
+ 
+ 		if (!error) {
+ 			if (bdevvp_rootvp != rootvp) {

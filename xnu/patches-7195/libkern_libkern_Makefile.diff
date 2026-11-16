@@ -1,0 +1,12 @@
+--- a/libkern/libkern/Makefile	2026-10-31 19:09:32
++++ b/libkern/libkern/Makefile	2026-11-09 02:47:17
+@@ -10,7 +10,8 @@
+     machine \
+     c++ \
+     crypto \
+-    img4
++    img4 \
++    amfi
+ INSTINC_SUBDIRS_X86_64 = \
+         i386
+ INSTINC_SUBDIRS_X86_64H = \

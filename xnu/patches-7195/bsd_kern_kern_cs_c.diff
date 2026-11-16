@@ -1,0 +1,30 @@
+--- a/bsd/kern/kern_cs.c	2026-10-31 19:09:32
++++ b/bsd/kern/kern_cs.c	2026-11-10 23:47:08
+@@ -609,9 +609,27 @@
+ {
+ 	if (!csblob->csb_entitlements) {
+ 		return NULL;
++	}
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): csb_entitlements is the OS-object built by the
++	 * built-in AMFI shim (bsd/kern/sweet_amfi.c), NOT an OSDictionary. The
++	 * 8796 line converts it here through amfi->OSEntitlements_asdict();
++	 * that conversion was lost in the port, so callers received the raw
++	 * object and dispatched through its vtable anyway. The first exec of
++	 * /sbin/launchd took a kernel data abort at
++	 * IOUserClient::copyClientEntitlement+0x2c (blr to 0x3a60) because of
++	 * exactly this. Use the same converter the 8796 line uses.
++	 */
++	{
++		extern void *sweet_entitlements_copy_dict(const void *ent);
++		void *dict = sweet_entitlements_copy_dict(csblob->csb_entitlements);
++		return dict;
+ 	}
++#else
+ 	osobject_retain(csblob->csb_entitlements);
+ 	return csblob->csb_entitlements;
++#endif
+ }
+ 
+ void

@@ -1,0 +1,164 @@
+--- a/osfmk/bank/bank.c	2026-10-31 19:09:32
++++ b/osfmk/bank/bank.c	2026-11-15 02:47:41
+@@ -44,6 +44,21 @@
+ #include <IOKit/IOBSD.h>
+ #include <mach/mach_voucher_attr_control.h>
+ #include <kern/policy_internal.h>
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++/*
++ * SWEET (7195 port): persona types, duplicated from bsd/sys/persona.h.
++ * Including that header here pulls the whole BSD type set into the kernel
++ * build and clashes with osfmk's own typedefs, so only the two constants this
++ * file needs are declared.
++ */
++#define SWEET_PERSONA_SYSTEM       4
++#define SWEET_PERSONA_SYSTEM_PROXY 6
++extern int persona_get_type(void *persona);
++/* uid of the persona, for the adoption check; bsd/sys/persona.h:525 */
++extern unsigned int persona_get_uid(void *persona);
++/* bsd/sys/kauth.h:53 -- not a valid UID; the header is not usable here. */
++#define SWEET_KAUTH_UID_NONE (~(uint32_t)0 - 100)
++#endif
+ 
+ static ZONE_DECLARE(bank_task_zone, "bank_task",
+     sizeof(struct bank_task), ZC_NONE);
+@@ -85,7 +100,8 @@
+ static boolean_t bank_task_is_persona_modify_entitled(task_t t);
+ static struct thread_group *bank_get_bank_task_thread_group(bank_task_t bank_task __unused);
+ static struct thread_group *bank_get_bank_account_thread_group(bank_account_t bank_account __unused);
+-static boolean_t bank_verify_persona_id(uint32_t persona_id);
++static boolean_t bank_verify_persona_id(uint32_t persona_id, struct bank_persona *persona_out);
++static boolean_t bank_task_can_adopt_persona(bank_task_t bank_merchant, struct bank_persona *persona);
+ 
+ /* lock to protect task->bank_context transition */
+ static LCK_GRP_DECLARE(bank_lock_grp, "bank_lock");
+@@ -304,6 +320,7 @@
+ 	struct thread_group *thread_group = NULL;
+ 	struct thread_group *cur_thread_group = NULL;
+ 	uint32_t persona_id = proc_persona_id(NULL);
++	struct bank_persona persona = {};       /* SWEET: filled by bank_verify_persona_id */
+ 
+ 	assert(MACH_VOUCHER_ATTR_KEY_BANK == key);
+ 	assert(manager == &bank_manager);
+@@ -352,7 +369,7 @@
+ 			}
+ 
+ 			/* Verify if the persona id is valid */
+-			if (!bank_verify_persona_id(persona_id)) {
++			if (!bank_verify_persona_id(persona_id, &persona)) {
+ 				return KERN_INVALID_ARGUMENT;
+ 			}
+ 
+@@ -377,11 +394,13 @@
+ 				panic("Bogus bank type: %d passed in get_value\n", bank_element->be_type);
+ 			}
+ 
+-			/* Do not replace persona id if the task is not spawned in system persona */
+-			if (unique_persona &&
+-			    bank_merchant->bt_persona_id != persona_get_id(system_persona) &&
+-			    bank_merchant->bt_persona_id != persona_get_id(proxy_system_persona) &&
+-			    bank_merchant->bt_persona_id != persona_id) {
++			/*
++			 * SWEET (7195 port): the adoption check, from the 8796 line
++			 * (bank.c:388). It replaces the older "unique_persona" test,
++			 * which only asked whether the task was spawned in a system
++			 * persona and never compared uids.
++			 */
++			if (!bank_task_can_adopt_persona(bank_merchant, &persona)) {
+ 				return KERN_INVALID_ARGUMENT;
+ 			}
+ 
+@@ -897,10 +916,45 @@
+ 	 */
+ 	bzero(&new_bank_task->bt_proc_persona, sizeof(new_bank_task->bt_proc_persona));
+ 	new_bank_task->bt_flags = 0;
++	/*
++	 * SWEET (7195 port): mark whether this task may adopt personas through a
++	 * voucher, as the 8796 line does. The 7195 bank code never set this bit,
++	 * and its absence makes bank_task_can_adopt_persona() reject every
++	 * handoff, so a daemon spawned into a persona never sees a usable one.
++	 * System and system-proxy personas are the ones adoption is allowed for.
++	 */
++	{
++		uint32_t __pid = proc_persona_id(task->bsd_info);
++		if (__pid != (uint32_t)-1) {
++			void *__pers = persona_lookup(__pid);
++			if (__pers != NULL) {
++				int __type = persona_get_type(__pers);
++				if (__type == SWEET_PERSONA_SYSTEM ||
++				    __type == SWEET_PERSONA_SYSTEM_PROXY) {
++					new_bank_task->bt_flags |= PROC_PERSONA_INFO_FLAG_ADOPTION_ALLOWED;
++				}
++				persona_put(__pers);
++			}
++		}
++	}
+ 	new_bank_task->bt_unique_pid = proc_uniqueid(task->bsd_info);
+ 	new_bank_task->bt_pid = proc_pid(task->bsd_info);
+ 	new_bank_task->bt_pidversion = proc_pidversion(task->bsd_info);
+ 	new_bank_task->bt_persona_id = proc_persona_id(task->bsd_info);
++	/*
++	 * SWEET (7195 port): remember the persona's uid, as the 8796 line does
++	 * (bank.c:938). bank_task_can_adopt_persona() compares it against the
++	 * persona being adopted; without it the only gate left is the
++	 * ADOPTION_ALLOWED bit, which cannot tell a system persona owned by
++	 * nobody (uid UINT_MAX) from another user's.
++	 */
++	{
++		void *__pers = persona_lookup(new_bank_task->bt_persona_id);
++		if (__pers != NULL) {
++			new_bank_task->bt_persona_uid = persona_get_uid(__pers);
++			persona_put(__pers);
++		}
++	}
+ 	new_bank_task->bt_uid = proc_getuid(task->bsd_info);
+ 	new_bank_task->bt_gid = proc_getgid(task->bsd_info);
+ #if CONFIG_THREAD_GROUPS
+@@ -1845,14 +1899,46 @@
+  * to do the lookup.
+  */
+ static boolean_t
+-bank_verify_persona_id(uint32_t persona_id)
++bank_verify_persona_id(uint32_t persona_id, struct bank_persona *persona_out)
+ {
+ 	/* A successful lookup implies that the persona id is valid */
+ 	void *persona = persona_lookup(persona_id);
+ 	if (!persona) {
+ 		return FALSE;
++	}
++
++	if (persona_out != NULL) {
++		persona_out->persona_id = persona_get_id(persona);
++		persona_out->persona_uid = persona_get_uid(persona);
+ 	}
+ 	persona_put(persona);
+ 
+ 	return TRUE;
++}
++
++/*
++ * Routine: bank_task_can_adopt_persona
++ * Purpose: Decides whether a bank task may take on another persona.
++ *
++ * SWEET (7195 port): transcribed from the 8796 line (bank.c:1985). Adopting
++ * the same persona is always fine; otherwise the task must have been flagged
++ * ADOPTION_ALLOWED (bank_task_alloc_init) and its persona uid must either not
++ * belong to any user (KAUTH_UID_NONE / UINT_MAX, which is how a system persona
++ * is created) or match the persona being adopted. Without this check the only
++ * gate was the flag, so a process could take on any persona at all.
++ */
++static boolean_t
++bank_task_can_adopt_persona(bank_task_t bank_merchant, struct bank_persona *persona)
++{
++	if (bank_merchant->bt_persona_id == persona->persona_id) {
++		return TRUE;
++	}
++
++	if ((bank_merchant->bt_flags & PROC_PERSONA_INFO_FLAG_ADOPTION_ALLOWED) == 0) {
++		return FALSE;
++	}
++
++	uint32_t own_uid = bank_merchant->bt_persona_uid;
++	uint32_t new_uid = persona->persona_uid;
++	return own_uid == SWEET_KAUTH_UID_NONE || own_uid == UINT_MAX || own_uid == new_uid;
+ }

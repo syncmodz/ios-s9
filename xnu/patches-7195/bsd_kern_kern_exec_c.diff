@@ -1,0 +1,194 @@
+--- a/bsd/kern/kern_exec.c	2026-10-31 19:09:32
++++ b/bsd/kern/kern_exec.c	2026-11-13 23:54:55
+@@ -80,6 +80,7 @@
+  */
+ #include <machine/reg.h>
+ #include <machine/cpu_capabilities.h>
++#include <arm64/sweet_early.h>
+ 
+ #include <sys/param.h>
+ #include <sys/systm.h>
+@@ -853,7 +854,27 @@
+ 
+ 	return KERN_SUCCESS;
+ }
++
+ 
++/*
++ * SWEET (7195 port): substring test on a counted name. kern_exec does not
++ * include string.h, and imgp's name is not guaranteed NUL-terminated at
++ * cn_namelen, so strstr/memmem are both out.
++ */
++static boolean_t
++sweet_name_has(const char *name, size_t len, const char *needle)
++{
++	size_t nlen = strlen(needle);
++	if (name == NULL || nlen == 0 || len < nlen) {
++		return FALSE;
++	}
++	for (size_t i = 0; i + nlen <= len; i++) {
++		if (memcmp(name + i, needle, nlen) == 0) {
++			return TRUE;
++		}
++	}
++	return FALSE;
++}
+ 
+ /*
+  * Set p->p_comm and p->p_name to the name passed to exec
+@@ -1015,10 +1036,95 @@
+ 
+ 	if ((mach_header->magic != MH_MAGIC) &&
+ 	    (mach_header->magic != MH_MAGIC_64)) {
++		/*
++		 * SWEET (7195 port): the file was read but is not Mach-O. If this
++		 * fires, exec_check_permissions passed (size nonzero) but the bytes
++		 * coming out of the HFS read path are wrong.
++		 */
++		sweet_early_mark(162, "macho magic bad");
++		{
++			/*
++			 * Kernel printf() never reaches this screen: vcputc needs
++			 * gc_initialized, which the SWEET boot path does not set. Dump
++			 * the first bytes of what actually came out of the HFS read so
++			 * the screen itself shows whether the file was read or the
++			 * mapping is wrong. Expected first bytes for /sbin/launchd:
++			 * cf fa ed fe 0c 00 00 01 ...
++			 */
++			const unsigned char *v = (const unsigned char *)imgp->ip_vdata;
++			unsigned int m = (unsigned int)mach_header->magic;
++
++			sweet_early_printf("EXECBAD magic=%x hi=%x lo=%x size=%llu",
++			    m, m >> 16, m & 0xffff,
++			    (unsigned long long)imgp->ip_arch_size);
++			sweet_early_printf("BYTES %02x %02x %02x %02x %02x %02x %02x %02x",
++			    v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7]);
++			sweet_early_printf("BYTES2 %02x %02x %02x %02x %02x %02x %02x %02x",
++			    v[8], v[9], v[10], v[11], v[12], v[13], v[14], v[15]);
++		}
+ 		error = -1;
+ 		goto bad;
+ 	}
++	sweet_early_mark(163, "macho magic ok");
++	sweet_early_printf("EXECOK %s size=%llu",
++	    imgp->ip_ndp->ni_cnd.cn_nameptr,
++	    (unsigned long long)imgp->ip_arch_size);
++	/*
++	 * SWEET (7195 port): the same line into the persistent console ring
++	 * (printf goes through _cnputs), so a daemon that never prints anything
++	 * of its own still leaves proof it was exec'd. Pairs with the EXIT line
++	 * in kern_exit.c.
++	 */
++	printf("EXEC %s pid=%d\n", imgp->ip_ndp->ni_cnd.cn_nameptr, p->p_pid);
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): taken from the 8796 line (m45), where this is what
++	 * made backboardd survive. BaseBoard's BSSystemSharedResourcesDirectory()
++	 * resolves the SystemGroup container ONCE per process through
++	 * dispatch_once and caches the result. If backboardd asks before
++	 * containermanagerd has registered the group (it needs a moment after
++	 * exec on this single-HFS root), the nil is cached for the lifetime of
++	 * the process and -[NSURL initFileURLWithPath:] aborts on it -- which is
++	 * exactly the SIGABRT we see. Holding these three 2 s before their first
++	 * exec gives the container manager that window.
++	 *
++	 * Matched on the exec'd path, not p_comm: this runs before
++	 * set_proc_name(), so p_comm still holds the spawner's name.
++	 */
++	{
++		/*
++		 * SWEET (7195 port): delay the DAEMON THAT NEEDS THE SERVICE, not
++		 * the victims, and follow the reference's default list.
++		 *
++		 * The earlier form held back backboardd, configd and mediaserverd for
++		 * 2 s, which is backwards: containermanagerd is the one that asks
++		 * usermanagerd for a user identity, and usermanagerd is a later fork
++		 * of keybagd. Holding the asker gives the answerer time to check in
++		 * (Bergamota 0147: "Delay the FIRST exec of the processes named in
++		 * boot-arg sweetexecdelay ... so usermanagerd is up first", default
++		 * "containermanagerd:6000").
++		 *
++		 * Our own logs show the order is inverted in this port too:
++		 * backboardd execs at line 501 and aborts with the nil-URL exception
++		 * at 700, while containermanagerd only execs at 511 -- so
++		 * backboardd asks for its container before anything has registered
++		 * one, gets nil, and caches it in dispatch_once for the life of the
++		 * process.
++		 */
++		static volatile unsigned int sweet_delay_count = 0;
++		const char *sweet_cn = (const char *)imgp->ip_ndp->ni_cnd.cn_nameptr;
++		size_t sweet_ln = (size_t)imgp->ip_ndp->ni_cnd.cn_namelen;
++		if (sweet_cn != NULL && sweet_delay_count < 1 &&
++		    sweet_name_has(sweet_cn, sweet_ln, "containermanagerd")) {
++			sweet_delay_count++;
++			printf("EXEC delay %s idx=%u 6s so usermanagerd checks in first\n",
++			    sweet_cn, sweet_delay_count);
++			delay(6000000);
++		}
++	}
++#endif
++
+ 	if (mach_header->filetype != MH_EXECUTE) {
+ 		error = -1;
+ 		goto bad;
+@@ -3721,6 +3827,7 @@
+ 		exec_done = TRUE;
+ 	} else if (error == -1) {
+ 		/* Image not claimed by any activator? */
++		sweet_early_mark(164, "no activator claimed");
+ 		error = ENOEXEC;
+ 	}
+ 
+@@ -5709,8 +5816,17 @@
+ 	VATTR_WANTED(vap, va_fileid);
+ 	VATTR_WANTED(vap, va_data_size);
+ 	if ((error = vnode_getattr(vp, vap, imgp->ip_vfs_context)) != 0) {
++		sweet_early_mark(165, "exec vnode_getattr failed");
+ 		return error;
+ 	}
++	/*
++	 * SWEET (7195 port): the HFS instrumentation (marks HFSGA/HFSRD) never
++	 * printed, so hfs_vnop_getattr was never called for this vnode: the file
++	 * is not on the HFS we mounted. Name the filesystem that answered.
++	 */
++	sweet_early_printf("EXECFS fs=%s size=%llu mode=%o",
++	    vnode_mount(vp)->mnt_vtable->vfc_name,
++	    (unsigned long long)vap->va_data_size, (unsigned)vap->va_mode);
+ 
+ 	/*
+ 	 * Ensure that at least one execute bit is on - otherwise root
+@@ -5723,8 +5839,18 @@
+ 
+ 	/* Disallow zero length files */
+ 	if (vap->va_data_size == 0) {
++		/*
++		 * SWEET (7195 port): this is the most likely source of the errno 8
++		 * that stopped launchd. exec_check_permissions runs BEFORE any image
++		 * activator sees the file, so a zero va_data_size from the HFS
++		 * getattr path ends the exec without the Mach-O header ever being
++		 * read. Distinguishes it from "no activator claimed the image".
++		 */
++		sweet_early_mark(160, "exec zero data_size");
++		printf("exec: zero data_size for %s\n", imgp->ip_ndp->ni_cnd.cn_nameptr);
+ 		return ENOEXEC;
+ 	}
++	sweet_early_mark(161, "exec data_size ok");
+ 
+ 	imgp->ip_arch_offset = (user_size_t)0;
+ #if __LP64__
+@@ -6843,9 +6969,14 @@
+ 				error = EACCES;
+ 				goto done;
+ 			}
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++			/* SWEET runs every iOS binary this way: one short line per exec. */
++			printf("exec %s\n", p->p_name);
++#else
+ 			printf("Allowing spawn of iOS binary %s since it has "
+ 			    "com.apple.private.security.no-sandbox entitlement or unentitled_ios_sim_launch "
+ 			    "boot-arg set to true\n", p->p_name);
++#endif
+ 		} else if (psa->psa_platform != PLATFORM_IOS) {
+ 			/* Simulator binary spawned with wrong platform */
+ 			signature_failure_reason = os_reason_create(OS_REASON_EXEC,

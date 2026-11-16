@@ -1,0 +1,137 @@
+--- a/osfmk/arm64/sleh.c	2026-10-31 19:09:32
++++ b/osfmk/arm64/sleh.c	2026-11-10 20:43:34
+@@ -32,6 +32,7 @@
+ #include <arm/misc_protos.h>
+ #include <arm/thread.h>
+ #include <arm/rtclock.h>
++#include <arm/machine_cpu.h>
+ #include <arm/trap.h> /* for IS_ARM_GDB_TRAP() et al */
+ #include <arm64/proc_reg.h>
+ #include <arm64/machine_machdep.h>
+@@ -976,6 +977,26 @@
+ 	exception_type_t           exception = EXC_BREAKPOINT;
+ 	mach_exception_data_type_t codes[2]  = {EXC_ARM_BREAKPOINT};
+ 	mach_msg_type_number_t     numcodes  = 2;
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): a userspace BRK is a SIGTRAP, and every abort in
++	 * this userland arrives here (containermanagerd dies of signal 5 while
++	 * configd/mediaserverd get SIGSEGV elsewhere). The PC names the exact
++	 * instruction -- for libpthread's __pthread_init it is a fixed, known
++	 * address, which decides whether this is the documented 454.40.3 crash
++	 * or something new. Print it into the persistent ring so the answer
++	 * survives the boot without a camera.
++	 */
++	{
++		char tnm[32];
++		extern void proc_selfname(char *, int);
++		proc_selfname(tnm, sizeof(tnm));
++		printf("SIGTRAP %s pc=0x%llx lr=0x%llx\n", tnm,
++		    (unsigned long long)get_saved_state_pc(state),
++		    (unsigned long long)get_saved_state_lr(state));
++	}
++#endif
+ 
+ #if __has_feature(ptrauth_calls) && !__ARM_ARCH_8_6__
+ 	if (ESR_EC(esr) == ESR_EC_BRK_AARCH64 &&
+@@ -1287,7 +1308,42 @@
+ 
+ 	if (ml_at_interrupt_context()) {
+ 		panic_with_thread_kernel_state("Apparently on interrupt stack when taking user abort!\n", state);
++	}
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): configd and mediaserverd die of SIGSEGV within the
++	 * same frame across boots (the m47 analysis pinned configd+0x3ca8 ->
++	 * libdispatch blr x8 with x19 NULL). pc/far/lr identify the exact
++	 * dereference. Silent for faults that already have a recovery point.
++	 */
++	if (recover == 0) {
++		/*
++		 * SWEET (7195 port): SpringBoard hit this in a tight loop (66k
++		 * identical lines flooded the ring and buried the rest of the boot).
++		 * Log only the first few per process, and say whether the faulting
++		 * page is mapped at all: an unmapped page inside the executable's
++		 * own range means a mapping/loader problem, not a data dereference.
++		 */
++		static volatile unsigned int sweet_segv_logged = 0;
++		if (sweet_segv_logged < 8) {
++			char snm[32];
++			extern void proc_selfname(char *, int);
++			proc_selfname(snm, sizeof(snm));
++			if (snm[0] != '\0') {
++				ppnum_t pn = pmap_find_phys_nofault(current_thread()->map->pmap,
++				    (addr64_t)fault_addr);
++				sweet_segv_logged++;
++				printf("SEGV %s pc=0x%llx far=0x%llx lr=0x%llx mapped=%d\n",
++				    snm,
++				    (unsigned long long)get_saved_state_pc(state),
++				    (unsigned long long)fault_addr,
++				    (unsigned long long)get_saved_state_lr(state),
++				    pn != 0);
++			}
++		}
+ 	}
++#endif
+ 
+ 	thread->iotier_override = THROTTLE_LEVEL_NONE; /* Reset IO tier override before handling abort from userspace */
+ 
+@@ -1740,7 +1796,48 @@
+ 	int preemption_level = get_preemption_level();
+ #endif
+ 
++
++#if defined(SWEET)
++	/*
++	 * sweet: TrustZone owns GIC Group 0, so the timer and IPIs that other
++	 * ARM64 targets take as FIQs arrive here as Group 1 IRQs.
++	 */
++	uint64_t iar = __builtin_arm_rsr64("ICC_IAR1_EL1");
++	uint32_t intid = (uint32_t)(iar & 0xFFFFFF);
+ 
++	if (intid >= 1020 && intid <= 1023) {
++		return; /* spurious */
++	}
++	/*
++	 * SWEET (7195 port): the 8796 tree keeps this in a runtime variable that
++	 * pe_fiq.c discovers from the device tree. This tree has no GIC/FIQ init
++	 * source, so use the board constant from SWEET.h (19 on this SoC).
++	 */
++	if (intid == SWEET_VTIMER_INTID) {
++		sleh_interrupt_handler_prologue(state, DBG_INTR_TYPE_TIMER);
++		cdp->cpu_decrementer = -1; /* Large */
++		INTERRUPT_MASKED_DEBUG_START(rtclock_intr, DBG_INTR_TYPE_TIMER);
++		rtclock_intr(TRUE);
++		INTERRUPT_MASKED_DEBUG_END();
++		__builtin_arm_wsr64("ICC_EOIR1_EL1", iar);
++	} else if (intid < 16) {
++		sleh_interrupt_handler_prologue(state, DBG_INTR_TYPE_IPI);
++		/* Ack before handling so an IPI raised meanwhile is not lost */
++		__builtin_arm_wsr64("ICC_EOIR1_EL1", iar);
++		__builtin_arm_isb(ISB_SY);
++		cpu_signal_handler();
++	} else {
++		sleh_interrupt_handler_prologue(state, DBG_INTR_TYPE_OTHER);
++		if (cdp->interrupt_handler) {
++			cdp->interrupt_handler(cdp->interrupt_target,
++			    cdp->interrupt_refCon,
++			    cdp->interrupt_nub,
++			    intid);
++		}
++		__builtin_arm_wsr64("ICC_EOIR1_EL1", iar);
++	}
++	__builtin_arm_isb(ISB_SY);
++#else
+ 	sleh_interrupt_handler_prologue(state, DBG_INTR_TYPE_OTHER);
+ 
+ #if USE_APPLEARMSMP
+@@ -1752,6 +1849,7 @@
+ 	    cdp->interrupt_nub,
+ 	    cdp->interrupt_source);
+ #endif
++#endif /* SWEET */
+ 
+ 	entropy_collect();
+ 

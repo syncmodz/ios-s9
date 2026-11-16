@@ -1,0 +1,128 @@
+--- a/bsd/kern/bsd_init.c	2026-10-31 19:09:32
++++ b/bsd/kern/bsd_init.c	2026-11-09 21:10:42
+@@ -80,6 +80,7 @@
+  */
+ 
+ #include <sys/param.h>
++#include <arm64/sweet_early.h>
+ #include <sys/filedesc.h>
+ #include <sys/kernel.h>
+ #include <sys/mount_internal.h>
+@@ -542,12 +543,15 @@
+ #define bsd_init_kprintf(x, ...)
+ #endif
+ 
++	sweet_early_mark(100, "bsd_init entered");
+ 	throttle_init();
+ 
+ 	printf(copyright);
++	sweet_early_mark(101, "copyright printed");
+ 
+ 	bsd_init_kprintf("calling parse_bsd_args\n");
+ 	parse_bsd_args();
++	sweet_early_mark(102, "parse_bsd_args done");
+ 
+ #if CONFIG_DEV_KMEM
+ 	bsd_init_kprintf("calling dev_kmem_init\n");
+@@ -557,13 +561,16 @@
+ 	/* Initialize kauth subsystem before instancing the first credential */
+ 	bsd_init_kprintf("calling kauth_init\n");
+ 	kauth_init();
++	sweet_early_mark(103, "kauth_init done");
+ 
+ 	/* Initialize process and pgrp structures. */
+ 	bsd_init_kprintf("calling procinit\n");
+ 	procinit();
++	sweet_early_mark(104, "procinit done");
+ 
+ 	/* Initialize the ttys (MUST be before kminit()/bsd_autoconf()!)*/
+ 	tty_init();
++	sweet_early_mark(105, "tty_init done");
+ 
+ 	/* kernel_task->proc = kernproc; */
+ 	set_bsdtask_info(kernel_task, (void *)kernproc);
+@@ -804,17 +811,33 @@
+ 	 */
+ 	bsd_init_kprintf("calling bsd_bufferinit\n");
+ 	bsd_bufferinit();
++	sweet_early_mark(106, "bsd_bufferinit done");
+ 
+ 	/*
+ 	 * Initialize the calendar.
+ 	 */
+ 	bsd_init_kprintf("calling IOKitInitializeTime\n");
+ 	IOKitInitializeTime();
++	sweet_early_mark(107, "IOKitInitializeTime done");
+ 
+ 	/* Initialize the file systems. */
+ 	bsd_init_kprintf("calling vfsinit\n");
+ 	vfsinit();
++	sweet_early_mark(108, "vfsinit done");
+ 
++#if SWEET_HFS
++	/*
++	 * SWEET (7195 port): taken from the 8796 line. HFS is built into the
++	 * kernel here instead of shipping as a kext, so it has to be registered
++	 * by hand before the root mount. bsd/sweet_hfs/sweet_hfs_iokit.c has
++	 * always defined sweet_hfs_register(); this line just never called it,
++	 * so the root volume had no filesystem to mount.
++	 */
++	extern void sweet_hfs_register(void);
++	sweet_hfs_register();
++	sweet_early_mark(109, "sweet_hfs_register done");
++#endif
++
+ 	/* Initialize file locks. */
+ 	bsd_init_kprintf("calling lf_init\n");
+ 	lf_init();
+@@ -942,7 +965,9 @@
+ 	sysctl_mib_init();
+ 
+ 	bsd_init_kprintf("calling bsd_autoconf\n");
++	sweet_early_mark(115, "calling bsd_autoconf");
+ 	bsd_autoconf();
++	sweet_early_mark(116, "bsd_autoconf done");
+ 
+ 	bsd_init_kprintf("calling os_reason_init\n");
+ 	os_reason_init();
+@@ -1022,7 +1047,9 @@
+ #endif
+ 
+ 		bsd_init_kprintf("vfs_mountroot\n");
++		sweet_early_mark(110, "calling vfs_mountroot");
+ 		if (0 == (err = vfs_mountroot())) {
++			sweet_early_mark(111, "vfs_mountroot ok");
+ 			break;
+ 		}
+ 		rootdevice[0] = '\0';
+@@ -1279,6 +1306,7 @@
+ 	bsd_init_kprintf("bsd_do_post - done");
+ 
+ 	load_init_program(p);
++	sweet_early_mark(120, "load_init_program done");
+ 	lock_trace = 1;
+ }
+ 
+@@ -1287,6 +1315,7 @@
+ {
+ 	kprintf("bsd_autoconf: calling kminit\n");
+ 	kminit();
++	sweet_early_mark(117, "kminit done");
+ 
+ 	/*
+ 	 * Early startup for bsd pseudodevices.
+@@ -1299,10 +1328,12 @@
+ 		}
+ 	}
+ 
+-	return IOKitBSDInit();
++	sweet_early_mark(118, "calling IOKitBSDInit");
++	kern_return_t autoconf_ret = IOKitBSDInit();
++	sweet_early_mark(119, "IOKitBSDInit done");
++	return autoconf_ret;
+ }
+ 
+-
+ #include <sys/disklabel.h>  /* for MAXPARTITIONS */
+ 
+ static void

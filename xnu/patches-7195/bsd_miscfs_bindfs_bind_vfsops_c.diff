@@ -1,0 +1,32 @@
+--- a/bsd/miscfs/bindfs/bind_vfsops.c	2026-10-31 19:09:32
++++ b/bsd/miscfs/bindfs/bind_vfsops.c	2026-11-10 17:33:30
+@@ -163,8 +163,27 @@
+ 
+ 	error = vnode_lookup(data, 0, &lowerrootvp, ctx);
+ 	if (error) {
+-		BINDFSERROR("lookup of %s failed error: %d\n", data, error);
+-		goto error;
++		/* SWEET (7195 port): taken from the 8796 line, where mount-phase-1
++		 * needs it to run at all. The single-HFS root has no APFS
++		 * preboot/factory trees, so the BindFS sources from the device-tree
++		 * fstab do not exist here. Without this fallback vnode_lookup fails
++		 * with ENOENT, /sbin/mount -P 1 exits 66 and launchd panics
++		 * ("boot task failure: mount-phase-1"). Firmware: self-bind the live
++		 * (empty) directory so it stays visible; the rest (factory/cache):
++		 * bind / as a stub. */
++		if (error == ENOENT) {
++			if (strncmp(data, "/private/preboot/", 16) == 0) {
++				printf("SWEET BindFS: fallback ENOENT %s -> self-bind /usr/standalone/firmware\n", data);
++				error = vnode_lookup("/usr/standalone/firmware", 0, &lowerrootvp, ctx);
++			} else {
++				printf("SWEET BindFS: fallback ENOENT %s -> stub-bind /\n", data);
++				error = vnode_lookup("/", 0, &lowerrootvp, ctx);
++			}
++		}
++		if (error) {
++			BINDFSERROR("lookup of %s failed error: %d\n", data, error);
++			goto error;
++		}
+ 	}
+ 
+ 	/* lowervrootvp has an iocount after vnode_lookup, drop that for a usecount.

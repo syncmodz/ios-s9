@@ -1,0 +1,25 @@
+--- a/osfmk/arm/pmap.c	2026-10-31 19:09:32
++++ b/osfmk/arm/pmap.c	2026-11-15 20:34:44
+@@ -9431,7 +9431,21 @@
+ pmap_sync_page_attributes_phys(
+ 	ppnum_t pp)
+ {
+-	flush_dcache((vm_offset_t) (pp << PAGE_SHIFT), PAGE_SIZE, TRUE);
++	/*
++	 * ptoa(), not (pp << PAGE_SHIFT).
++	 *
++	 * ppnum_t is 32 bits, so shifting it truncates the page number's high
++	 * bits: the result wraps for any page whose physical address is at or
++	 * above 4 GB. This board's DRAM runs to 0x17e1c0000, so 2018 MB of it
++	 * is above that line -- every flush for one of those pages went to a
++	 * wrapped, wrong address (and phystokv_range() then panicked with
++	 * "illegal PA").
++	 *
++	 * ios-flame found the same bug independently (its DRAM reaches
++	 * 0x2_0000_0000) and documents the panic it caused in
++	 * SweetAccelerator.cpp:236-241. Fix: widen before shifting.
++	 */
++	flush_dcache((vm_offset_t) ptoa(pp), PAGE_SIZE, TRUE);
+ }
+ 
+ #if CONFIG_COREDUMP

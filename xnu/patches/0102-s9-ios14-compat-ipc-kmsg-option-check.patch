@@ -1,0 +1,40 @@
+diff --git a/osfmk/ipc/ipc_kmsg.c b/osfmk/ipc/ipc_kmsg.c
+index b4d1276..0e9b4f5 100644
+--- a/osfmk/ipc/ipc_kmsg.c
++++ b/osfmk/ipc/ipc_kmsg.c
+@@ -2811,24 +2811,17 @@ ipc_kmsg_option_check(
+ 		}
+ #endif /* XNU_TARGET_OS_OSX */
+ 
+-		if (ip_is_kobject(port)) {
+-			natural_t kotype = ip_kotype(port);
+-
+-			if (__improbable(kotype == IKOT_TIMER)) {
+-				/*
+-				 * For bincompat, let's still allow user messages to timer port, but
+-				 * force MACH64_SEND_MQ_CALL flag for memory segregation.
+-				 */
+-				if (__improbable(!(option64 & MACH64_SEND_MQ_CALL))) {
+-					return MACH_SEND_INVALID_OPTIONS;
+-				}
+-			} else {
+-				/* Otherwise, caller must set MACH64_SEND_KOBJECT_CALL. */
+-				if (__improbable(!(option64 & MACH64_SEND_KOBJECT_CALL))) {
+-					return MACH_SEND_INVALID_OPTIONS;
+-				}
+-			}
+-		}
++		/*
++		 * Compatibility patch for iOS 14.3 userland on iOS 16 kernel.
++		 * The launchd from iOS 14.3 uses option flags on the bootstrap port
++		 * that the iOS 16 kernel's ipc_kmsg_option_check rejects, triggering
++		 * kGUARD_EXC_INVALID_OPTIONS (mach_port_guard_exception) which kills
++		 * pid 1.  To allow boot progression, we skip the strict option validation
++		 * that would otherwise cause the guard exception.  Deeper compatibility
++		 * walls (vnguard, AMFI, launchd_cache_loader vs libignition, etc.) remain
++		 * and will need separate patches after this one.
++		 */
++		return MACH_MSG_SUCCESS;
+ 
+ #if CONFIG_CSR
+ 		if (csr_check(CSR_ALLOW_KERNEL_DEBUGGER) == 0) {

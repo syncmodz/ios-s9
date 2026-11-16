@@ -1,0 +1,76 @@
+--- a/bsd/sys/persona.h	2026-10-31 19:09:32
++++ b/bsd/sys/persona.h	2026-11-15 02:40:39
+@@ -56,6 +56,7 @@
+ #define PERSONA_ID_NONE ((uid_t)-1)
+ 
+ struct kpersona_info {
++	/* v1 fields */
+ 	uint32_t persona_info_version;
+ 
+ 	uid_t    persona_id; /* overlaps with UID */
+@@ -66,10 +67,31 @@
+ 	uid_t    persona_gmuid;
+ 	char     persona_name[MAXLOGNAME + 1];
+ 
++	/* v2 fields */
++	uid_t    persona_uid;
++
+ 	/* TODO: MAC policies?! */
+-};
++} __attribute__((packed));
+ 
+ #define PERSONA_INFO_V1       1
++#define PERSONA_INFO_V2       2
++
++/*
++ * SWEET (7195 port): userspace and the kernel must agree on this layout. The
++ * 8796 line carries the v2 field (persona_uid) and a static assert pinning the
++ * size at 348; this tree only had v1, so the struct was 4 bytes short.
++ *
++ * That is what killed containermanagerd: iOS 14.3's container manager asks for
++ * kpersona_info v2, gets a 344-byte v1 answer, reads persona_uid out of
++ * whatever follows the buffer, and gives up with "Could not obtain persona
++ * attributes after exhausting retries, crashing" (brk at +0x6580). Its death
++ * cascades: no SystemGroup registration -> BSSystemSharedResourcesDirectory()
++ * nil (cached by dispatch_once) -> backboardd aborts on
++ * -[NSURL initFileURLWithPath:] -> no window server for SpringBoard.
++ */
++_Static_assert(sizeof(struct kpersona_info) == 348,
++    "sizeof(struct kpersona_info) == 348, matching userspace");
++
+ #define PERSONA_INFO_V1_SIZE  (sizeof(struct kpersona_info))
+ 
+ 
+@@ -279,6 +301,15 @@
+ 	persona_type_t pna_type;
+ 	char         pna_login[MAXLOGNAME + 1];
+ 	char         *pna_path;
++	/*
++	 * SWEET (7195 port): the persona's own uid, taken from the 8796 line.
++	 * Without it persona_get_uid() fell back to the credential's uid, which
++	 * is still the shared default cred (KAUTH_UID_NONE) until adoption, so
++	 * every persona reported uid=-101. UserManagement drops an identity whose
++	 * persona uid is unset ("nil personaUniqueString"), and containermanagerd
++	 * reads that as "no attributes" and aborts.
++	 */
++	uid_t        pna_uid;
+ 
+ 	kauth_cred_t pna_cred;
+ 	uid_t        pna_pgid;
+@@ -445,8 +476,15 @@
+ 
+ void personas_bootstrap(void);
+ 
++/*
++ * SWEET (7195 port): the uid is the CALLER's, not the id. The 8796 line takes
++ * it here (persona.h:454) because kpersona_alloc lets go of the two: a persona
++ * may be created with id 99 and uid UINT_MAX ("system persona, owned by
++ * nobody"), and bank_task_can_adopt_persona() tests exactly that. Deriving
++ * pna_uid from the id made persona_get_uid() lie for those personas.
++ */
+ struct persona *persona_alloc(uid_t id, const char *login,
+-    persona_type_t type, char *path, int *error);
++    persona_type_t type, char *path, uid_t uid, int *error);
+ 
+ int persona_init_begin(struct persona *persona);
+ void persona_init_end(struct persona *persona, int error);

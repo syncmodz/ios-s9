@@ -1,0 +1,33 @@
+--- a/osfmk/console/serial_console.c	2026-10-31 19:09:32
++++ b/osfmk/console/serial_console.c	2026-11-09 11:59:38
+@@ -314,11 +314,30 @@
+ 	return idx;
+ }
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++/*
++ * SWEET (7195 port): SweetFramebuffer.cpp sets this to keep the logo on screen
++ * instead of boot log text. Default 0 (unmuted), the same as the 8796 line.
++ */
++int sweet_console_muted = 0;
++
++/* Persistent console ring in bsd/dev/sweet_ufs.c, readable from TWRP. */
++extern void sweet_log_append(const char *c, int size);
++#endif
++
+ static inline void
+ _cnputs(char * c, int size)
+ {
+ 	uint32_t idx = get_cons_ops_index();
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/* Mirror into the UFS ring first: the mute below must not cost the log. */
++	sweet_log_append(c, size);
++	if (sweet_console_muted) {
++		return;
++	}
++#endif
++
+ 	while (size-- > 0) {
+ 		if (*c == '\n') {
+ 			cons_ops[idx].putc(0, 0, '\r');

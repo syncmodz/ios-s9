@@ -1,0 +1,43 @@
+--- a/iokit/Kernel/IOUserServer.cpp	2026-10-31 19:09:32
++++ b/iokit/Kernel/IOUserServer.cpp	2026-11-09 06:53:21
+@@ -1675,6 +1675,7 @@
+ 	const char * name,
+ 	uint64_t tag,
+ 	uint64_t options,
++	OSString * bundleID,
+ 	IOUserServer ** server)
+ {
+ 	IOReturn          ret;
+@@ -1682,6 +1683,7 @@
+ 	const OSSymbol  * sym;
+ 	OSNumber        * serverTag;
+ 	io_name_t         rname;
++	OSKext          * kext;
+ 
+ 	us = (typeof(us))thread_iokit_tls_get(0);
+ 	assert(OSDynamicCast(IOUserServer, us));
+@@ -1690,6 +1692,24 @@
+ 	}
+ 	if (!us) {
+ 		return kIOReturnError;
++	}
++
++	/*
++	 * SWEET (7195 port): the generated declaration takes bundleID (see
++	 * IOUserServer_Create_Args), so it is accepted here. This line's
++	 * IOUserServer has no fAllocationName / setDriverKitStatistics, so only
++	 * the load tag, the UUID and the log line are available.
++	 */
++	if (bundleID) {
++		kext = OSKext::lookupKextWithIdentifier(bundleID->getCStringNoCopy());
++		if (kext) {
++			us->setTaskLoadTag(kext);
++			us->setDriverKitUUID(kext);
++			OSKext::OSKextLogDriverKitInfoLoad(kext);
++			OSSafeReleaseNULL(kext);
++		} else {
++			DKLOG(DKS "::Create(" DKS "): could not find OSKext for %s\n", DKN(us), name, tag, bundleID->getCStringNoCopy());
++		}
+ 	}
+ 
+ 	sym       = OSSymbol::withCString(name);

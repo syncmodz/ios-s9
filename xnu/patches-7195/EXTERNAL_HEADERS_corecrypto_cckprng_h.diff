@@ -1,0 +1,17 @@
+--- a/EXTERNAL_HEADERS/corecrypto/cckprng.h	2026-10-31 19:09:32
++++ b/EXTERNAL_HEADERS/corecrypto/cckprng.h	2026-11-09 02:20:07
+@@ -73,6 +73,14 @@
+ #define CCKPRNG_SEED_NBYTES 32
+ #define CCKPRNG_POOL_NBYTES 32
+ #define CCKPRNG_KEY_NBYTES 32
++
++/*
++ * SWEET (7195 port): the 8796 line defines this next to the constants above
++ * and prng_random.c refreshes the DRBG from a buffer of this size.
++ */
++#ifndef CCKPRNG_ENTROPY_SIZE
++#define CCKPRNG_ENTROPY_SIZE 64
++#endif
+ 
+ struct cckprng_gen_diag {
+     // The number of times this generator has been rekeyed from the master seed

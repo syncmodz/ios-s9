@@ -1,0 +1,29 @@
+--- a/osfmk/arm/rtclock.c	2026-10-31 19:09:32
++++ b/osfmk/arm/rtclock.c	2026-11-15 02:31:00
+@@ -288,6 +288,26 @@
+ 
+ 	cdp->cpu_stat.timer_cnt++;
+ 	SCHED_STATS_INC(timer_pop_count);
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): feed the APSS watchdog from the tick.
++	 *
++	 * The shim arms the watchdog and then hands the CPU to XNU, which never
++	 * fed it -- so a kernel hang left a dead phone and a human had to hold
++	 * Power + Volume Down. Petting here means a hang that stops the timer
++	 * stops the petting, and the hardware resets the SoC; the BCB is already
++	 * written, so the bootloader comes back to TWRP on its own. Same pattern
++	 * as the Galaxy S5 port's stub (s5/stub/stub.c).
++	 *
++	 * A single register write, no locks, no allocation: safe in interrupt
++	 * context on every CPU.
++	 */
++	{
++		extern void sweet_wdt_pet(void);
++		sweet_wdt_pet();
++	}
++#endif
+ 
+ 	assert(!ml_get_interrupts_enabled());
+ 

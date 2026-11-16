@@ -1,0 +1,18 @@
+--- a/pexpert/pexpert/arm64/Makefile	2026-10-31 19:09:32
++++ b/pexpert/pexpert/arm64/Makefile	2026-11-09 01:59:09
+@@ -23,6 +23,7 @@
+ 	H11.h \
+ 	H13.h \
+ 	BCM2837.h \
++	SWEET.h \
+ 	spr_locks.h
+ 
+ 
+@@ -59,6 +60,7 @@
+ 	H11.h \
+ 	H13.h \
+ 	BCM2837.h \
++	SWEET.h \
+ 	spr_locks.h
+ 
+ 

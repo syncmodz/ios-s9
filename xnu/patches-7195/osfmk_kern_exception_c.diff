@@ -1,0 +1,241 @@
+--- a/osfmk/kern/exception.c	2026-10-31 19:09:32
++++ b/osfmk/kern/exception.c	2026-11-13 23:11:56
+@@ -569,8 +569,238 @@
+ 	}
+ #endif /* __has_feature(ptrauth_calls) */
+ 	return exception_triage_thread(exception, code, codeCnt, thread);
++}
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++#include <vm/vm_shared_region.h>
++#include <arm/thread.h>
++
++/*
++ * SWEET crash report on the console. The phone has no way to get crash
++ * logs off the device, and corpses stop after a few crashes, so print what
++ * symbolication needs: user registers, a frame-pointer backtrace, the
++ * shared cache slide (unslid = pc - slide) and the main binary's Mach-O
++ * header (offset = pc - mh). Called from proc_prepareexit on the exiting
++ * (crashing) thread.
++ */
++void sweet_crash_log(const char *name, int pid, int sig, uint64_t code, uint64_t subcode);
++static void sweet_crash_strings(const char *name);
++
++void
++sweet_crash_log(const char *name, int pid, int sig, uint64_t code, uint64_t subcode)
++{
++	thread_t thread = current_thread();
++	task_t task = current_task();
++	arm_saved_state_t *ss = find_user_regs(thread);
++	uint64_t slide = 0, mh = task->mach_header_vm_address;
++
++	vm_shared_region_t sr = vm_shared_region_get(task);
++	if (sr != NULL) {
++		slide = sr->sr_slide;
++		vm_shared_region_deallocate(sr);
++	}
++	printf("CRASH %s[%d] sig %d code 0x%llx sub 0x%llx slide 0x%llx mh 0x%llx\n",
++	    name, pid, sig, code, subcode, slide, mh);
++	if (ss == NULL || !is_saved_state64(ss)) {
++		return;
++	}
++	uint64_t fp = get_saved_state_fp(ss);
++	printf("CRASH %s pc 0x%llx lr 0x%llx sp 0x%llx fp 0x%llx far 0x%llx\n", name,
++	    get_saved_state_pc(ss), get_saved_state_lr(ss), get_saved_state_sp(ss), fp,
++	    (uint64_t)saved_state64(ss)->far);
++
++	char line[200];
++	int n = snprintf(line, sizeof(line), "CRASH %s bt", name);
++	for (int i = 0; i < 10 && fp != 0 && (fp & 7) == 0 && n < (int)sizeof(line) - 20; i++) {
++		uint64_t frame[2];
++		if (copyin((user_addr_t)fp, frame, sizeof(frame)) != 0) {
++			break;
++		}
++		n += snprintf(line + n, sizeof(line) - n, " 0x%llx", frame[1]);
++		if (frame[0] <= fp) {
++			break;
++		}
++		fp = frame[0];
++	}
++	printf("%s\n", line);
++
++	if (sig == 11 || sig == 10) {
++		/* Which mapping the faulting address is in, or which two it falls between. */
++		uint64_t far = (uint64_t)saved_state64(ss)->far;
++		vm_map_t map = current_map();
++		vm_map_entry_t entry;
++		vm_map_lock_read(map);
++		bool inside = vm_map_lookup_entry(map, (vm_map_offset_t)far, &entry);
++		for (int i = 0; i < 2 && entry != vm_map_to_entry(map); i++) {
++			printf("CRASH %s map%s 0x%llx-0x%llx prot %d/%d tag %d\n", name,
++			    inside && i == 0 ? " (far inside)" : (i == 0 ? " before far" : " after far"),
++			    (uint64_t)entry->vme_start, (uint64_t)entry->vme_end, entry->protection,
++			    entry->max_protection, (int)VME_ALIAS(entry));
++			if (inside) {
++				break;
++			}
++			entry = entry->vme_next;
++		}
++		vm_map_unlock_read(map);
++	}
++	if (sig == 6 || sig == 5) {
++		sweet_crash_strings(name);
++	}
++}
++
++/*
++ * SWEET: for a process named in boot-arg sweetscan (comma separated,
++ * default "backboardd,SpringBoard"; "-" = off) that dies with SIGABRT or
++ * SIGTRAP (BSAssert / NSAssert style failures) print the printable text runs
++ * (>= 24 characters, at least 2 spaces) found in its malloc heap as
++ * "STR text", at most 700 lines. An uncaught NSException's reason string
++ * is among them: the abort message only carries the exception's type.
++ */
++static void
++sweet_crash_strings(const char *name)
++{
++	static char names[128];
++	char *buf;
++	vm_map_t map = current_map();
++	vm_map_offset_t addr = 0;
++	uint64_t scanned = 0;
++	int lines = 0;
++	char last[96] = "";
++
++	if (!PE_parse_boot_argn("sweetscan", names, sizeof(names))) {
++		/*
++		 * SWEET (7195 port): containermanagerd is included because it is the
++		 * daemon whose uncaught NSException we have never been able to read
++		 * -- it dies with SIGTRAP from __os_crash after "Could not obtain
++		 * persona attributes", and the reason string should be in its heap.
++		 * 'amsaccountsd' and 'lsd' likewise fail on identity lookups.
++		 */
++		strlcpy(names, "backboardd,SpringBoard,containermanagerd,lsd,amsaccountsd",
++		    sizeof(names));
++	}
++	size_t n = strlen(name), found = 0;
++	for (const char *t = names; *t;) {
++		const char *end = strchr(t, ',');
++		size_t tl = end ? (size_t)(end - t) : strlen(t);
++		if (tl == n && n > 0 && strncmp(t, name, n) == 0) {
++			found = 1;
++			break;
++		}
++		if (!end) {
++			break;
++		}
++		t = end + 1;
++	}
++	if (!found) {
++		return;
++	}
++	buf = kalloc_data(65536, Z_WAITOK);
++	if (buf == NULL) {
++		return;
++	}
++	printf("STR scan of %s heap\n", name);
++	while (lines < 700 && scanned < (96ull << 20)) {
++		vm_map_size_t size = 0;
++		natural_t depth = 0;
++		vm_region_submap_info_data_64_t info;
++		mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_V2_COUNT_64;
++
++		if (vm_map_region_recurse_64(map, &addr, &size, &depth,
++		    (vm_region_submap_info_64_t)&info, &count) != KERN_SUCCESS) {
++			break;
++		}
++		vm_map_offset_t base = addr;
++		addr += size;
++		if (info.is_submap || (info.protection & (VM_PROT_READ | VM_PROT_WRITE)) !=
++		    (VM_PROT_READ | VM_PROT_WRITE) || info.user_tag < 1 || info.user_tag > 11) {
++			continue;
++		}
++		for (vm_map_offset_t off = 0; off < size && lines < 700; off += 65536) {
++			size_t len = (size - off) < 65536 ? (size_t)(size - off) : 65536;
++			if (copyin((user_addr_t)(base + off), buf, len) != 0) {
++				continue;
++			}
++			scanned += len;
++			size_t start = 0;
++			int spaces = 0;
++			for (size_t i = 0; i <= len; i++) {
++				bool ok = i < len && ((unsigned char)buf[i] >= 0x20 && (unsigned char)buf[i] < 0x7f);
++				if (ok) {
++					spaces += buf[i] == ' ';
++					continue;
++				}
++				size_t run = i - start;
++				if (run >= 24 && spaces >= 2) {
++					char text[160];
++					size_t m = run < sizeof(text) - 1 ? run : sizeof(text) - 1;
++					memcpy(text, buf + start, m);
++					text[m] = 0;
++					if (strncmp(text, last, sizeof(last) - 1) != 0) {
++						printf("STR %s\n", text);
++						lines++;
++						strlcpy(last, text, sizeof(last));
++					}
++				}
++				start = i + 1;
++				spaces = 0;
++			}
++		}
++	}
++	printf("STR done: %llu KiB scanned, %d strings\n", scanned >> 10, lines);
++	kfree_data(buf, 65536);
+ }
++/*
++ * SWEET process sampler (bsd/dev/sweet_sample.c): user pc/lr/sp and a frame
++ * pointer backtrace of every thread of a task, from the saved user state.
++ */
++void sweet_sample_task(const char *name, int pid, task_t task);
+ 
++void
++sweet_sample_task(const char *name, int pid, task_t task)
++{
++	vm_map_t map = get_task_map(task);
++	uint64_t slide = 0;
++	int tn = 0;
++	thread_t thread;
++	vm_shared_region_t sr = vm_shared_region_get(task);
++
++	if (sr != NULL) {
++		slide = sr->sr_slide;
++		vm_shared_region_deallocate(sr);
++	}
++	printf("SMP %s[%d] slide 0x%llx mh 0x%llx\n", name, pid, slide, task->mach_header_vm_address);
++
++	task_lock(task);
++	queue_iterate(&task->threads, thread, thread_t, task_threads) {
++		arm_saved_state_t *ss = find_user_regs(thread);
++		char line[400];
++		int n;
++		uint64_t fp;
++
++		if (ss == NULL || !is_saved_state64(ss)) {
++			continue;
++		}
++		fp = get_saved_state_fp(ss);
++		n = snprintf(line, sizeof(line), "SMP %s t%d pc 0x%llx lr 0x%llx sp 0x%llx bt", name, tn++,
++		    get_saved_state_pc(ss), get_saved_state_lr(ss), get_saved_state_sp(ss));
++		for (int i = 0; i < 16 && fp != 0 && (fp & 7) == 0 && n < (int)sizeof(line) - 20; i++) {
++			uint64_t frame[2];
++			if (vm_map_read_user(map, fp, frame, sizeof(frame)) != KERN_SUCCESS) {
++				break;
++			}
++			n += snprintf(line + n, sizeof(line) - n, " 0x%llx", frame[1]);
++			if (frame[0] <= fp) {
++				break;
++			}
++			fp = frame[0];
++		}
++		printf("%s\n", line);
++	}
++	task_unlock(task);
++}
++
++#endif /* ARM64_BOARD_CONFIG_SWEET */
++
+ kern_return_t
+ bsd_exception(
+ 	exception_type_t        exception,

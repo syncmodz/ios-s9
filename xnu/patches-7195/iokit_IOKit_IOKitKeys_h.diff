@@ -1,0 +1,17 @@
+--- a/iokit/IOKit/IOKitKeys.h	2026-10-31 19:09:32
++++ b/iokit/IOKit/IOKitKeys.h	2026-11-09 02:21:47
+@@ -153,6 +153,14 @@
+ #define kIOUserClientMessageAppSuspendedKey     "IOUserClientMessageAppSuspended"
+ #endif
+ #define kIOUserClientDefaultLockingKey                  "IOUserClientDefaultLocking"
++/*
++ * SWEET (7195 port): these three properties exist in the 8796 tree and are
++ * set by the IOHIDEventServiceUserClient copied from it. This line has no
++ * IOUserClient2022 layer, so they are only descriptive properties here.
++ */
++#define kIOUserClientEntitlementsKey                                "IOUserClientEntitlements"
++#define kIOUserClientDefaultLockingSetPropertiesKey                 "IOUserClientDefaultLockingSetProperties"
++#define kIOUserClientDefaultLockingSingleThreadExternalMethodKey    "IOUserClientDefaultLockingSingleThreadExternalMethod"
+ // diagnostic string describing the creating task
+ #define kIOUserClientCreatorKey         "IOUserClientCreator"
+ // the expected cdhash value of the userspace driver executable

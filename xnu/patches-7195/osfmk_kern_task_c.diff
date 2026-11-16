@@ -1,0 +1,38 @@
+--- a/osfmk/kern/task.c	2026-10-31 19:09:32
++++ b/osfmk/kern/task.c	2026-11-14 06:13:44
+@@ -1417,7 +1417,9 @@
+ 
+ 	new_task->affinity_space = NULL;
+ 
++#if KPC
+ 	new_task->t_kpc = 0;
++#endif /* KPC */
+ 
+ 	new_task->pidsuspended = FALSE;
+ 	new_task->frozen = FALSE;
+@@ -6506,6 +6508,25 @@
+ 		*old_limit_mb = (int)(old >> 20);
+ 	}
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): the per-process footprint limits come from an
++	 * inherited device profile that assumes a smaller, older iPhone. This
++	 * board has 4 GB, and the sampler shows the consequence on every boot:
++	 *
++	 *   EXC_RESOURCE -> assistantd[24] exceeded mem limit: InactiveHard 60 MB (fatal)
++	 *   memorystatus: killing_specific_process pid 24 [assistantd]
++	 *       (per-process-limit 0) 61440KB - memorystatus_available_pages: 215634
++	 *
++	 * 215634 free pages is ~840 MB at the instant a 60 MB limit kills a UI
++	 * daemon. Same fix, same reasoning, as the OnePlus 2 port
++	 * (veerhooda-xnu osfmk/kern/task.c:5499).
++	 */
++	if (new_limit_mb > 0 && new_limit_mb < 256) {
++		new_limit_mb = 256;
++	}
++#endif /* ARM64_BOARD_CONFIG_SWEET */
++
+ 	if (new_limit_mb == -1) {
+ 		/*
+ 		 * Caller wishes to remove the limit.

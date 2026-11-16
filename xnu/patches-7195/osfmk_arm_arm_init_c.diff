@@ -1,0 +1,120 @@
+--- a/osfmk/arm/arm_init.c	2026-10-31 19:09:32
++++ b/osfmk/arm/arm_init.c	2026-11-09 19:23:14
+@@ -57,6 +57,7 @@
+ #include <pexpert/arm/consistent_debug.h>
+ #include <pexpert/device_tree.h>
+ #include <arm/proc_reg.h>
++#include <arm64/sweet_early.h>
+ #include <arm/pmap.h>
+ #include <arm/caches_internal.h>
+ #include <arm/cpu_internal.h>
+@@ -353,6 +354,9 @@
+ #endif
+ 
+ 	ml_parse_cpu_topology();
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(3, "ml_parse_cpu_topology done");
++#endif
+ 
+ 	master_cpu = ml_get_boot_cpu_number();
+ 	assert(master_cpu >= 0 && master_cpu <= ml_get_max_cpu_number());
+@@ -448,7 +452,14 @@
+ 	__builtin_arm_wsr("pan", 1);
+ #endif  /* __ARM_PAN_AVAILABLE__ */
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(6, "cpu_init done");
++	sweet_early_mark(7, "entering arm_vm_init");
++#endif
+ 	arm_vm_init(xmaxmem, args);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(15, "arm_vm_init returned");
++#endif
+ 
+ 	if (debug_boot_arg) {
+ 		patch_low_glo();
+@@ -459,6 +470,9 @@
+ #endif
+ 
+ 	PE_consistent_debug_inherit();
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(18, "consistent debug inherited");
++#endif
+ 
+ 	/*
+ 	 * rdar://54622819 Insufficient HSP purge window can cause incorrect translation when ASID and TTBR base address is changed at same time)
+@@ -476,6 +490,19 @@
+ 	kernel_startup_initialize_upto(STARTUP_SUB_KPRINTF);
+ 	kprintf("kprintf initialized\n");
+ 
++	/*
++	 * SWEET: 7195 never called serial_init() here, and its
++	 * switch_to_serial_console() switches unconditionally. With serial=3 in
++	 * the boot args that sent every kprintf to a UART that does not exist on
++	 * this board, so the kernel went silent after this point. 8796 guards
++	 * both; do the same.
++	 */
++	const unsigned int serial_exists = serial_init();
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(19, "serial_init returned");
++	sweet_early_mark(20, "kprintf startup complete");
++#endif
++
+ 	serialmode = 0;
+ 	if (PE_parse_boot_argn("serial", &serialmode, sizeof(serialmode))) {
+ 		/* Do we want a serial keyboard and/or console? */
+@@ -495,14 +522,17 @@
+ 		serialmode = 0;
+ 	}
+ 
+-	if (serialmode & SERIALMODE_OUTPUT) {                 /* Start serial if requested */
++	if ((serialmode & SERIALMODE_OUTPUT) && serial_exists) { /* Start serial if requested */
+ 		(void)switch_to_serial_console(); /* Switch into serial mode */
+ 		disableConsoleOutput = FALSE;     /* Allow printfs to happen */
+ 	}
++	sweet_early_mark(21, "calling PE_create_console");
+ 	PE_create_console();
++	sweet_early_mark(22, "PE_create_console done");
+ 
+ 	/* setup console output */
+ 	PE_init_printf(FALSE);
++	sweet_early_mark(23, "PE_init_printf done");
+ 
+ #if __arm64__
+ #if DEBUG
+@@ -511,6 +541,7 @@
+ #endif
+ 
+ 	cpu_machine_idle_init(TRUE);
++	sweet_early_mark(24, "cpu_machine_idle_init done");
+ 
+ #if     (__ARM_ARCH__ == 7)
+ 	if (arm_diag & 0x8000) {
+@@ -519,14 +550,19 @@
+ #endif
+ 
+ 	PE_init_platform(TRUE, &BootCpuData);
++	sweet_early_mark(25, "PE_init_platform(TRUE) done");
+ 
+ #if __arm64__
+ 	ml_map_cpu_pio();
++	sweet_early_mark(26, "ml_map_cpu_pio done");
+ #endif
+ 
+ 	cpu_timebase_init(TRUE);
++	sweet_early_mark(27, "cpu_timebase_init done");
+ 	PE_init_cpu();
++	sweet_early_mark(28, "PE_init_cpu done");
+ 	fiq_context_init(TRUE);
++	sweet_early_mark(29, "fiq_context_init done");
+ 
+ 
+ #if HIBERNATION
+@@ -556,6 +592,7 @@
+ 
+ 	gDramBase = *dram_base;
+ 	gDramSize = *dram_size;
++	sweet_early_mark(30, "calling machine_startup");
+ 
+ 	/*
+ 	 * Initialize the stack protector for all future calls

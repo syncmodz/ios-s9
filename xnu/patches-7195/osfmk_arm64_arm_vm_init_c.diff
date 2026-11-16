@@ -1,0 +1,153 @@
+--- a/osfmk/arm64/arm_vm_init.c	2026-10-31 19:09:32
++++ b/osfmk/arm64/arm_vm_init.c	2026-11-09 15:04:48
+@@ -42,6 +42,7 @@
+ #include <machine/atomic.h>
+ #include <arm64/proc_reg.h>
+ #include <arm64/lowglobals.h>
++#include <arm64/sweet_early.h>
+ #include <arm/cpu_data_internal.h>
+ #include <arm/misc_protos.h>
+ #include <pexpert/arm64/boot.h>
+@@ -1679,6 +1680,48 @@
+ #define ARM64_PHYSMAP_SLIDE_RANGE (1ULL << 30) // 1 GB
+ #define ARM64_PHYSMAP_SLIDE_MASK  (ARM64_PHYSMAP_SLIDE_RANGE - 1)
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++/*
++ * SWEET (7195 port): taken from the 8796 line. The reserved low-globals/kernel
++ * region is excluded from VM allocation, so the otherwise empty 32MB block
++ * above low globals and below gVirtBase carries a Normal-NC framebuffer alias
++ * that survives the bootstrap TTBR0 teardown. Without it there is no screen
++ * output at all between the shim's jump and the framebuffer console.
++ */
++#define SWEET_EARLY_FB_VA (VM_MIN_KERNEL_ADDRESS + ARM_TT_L2_SIZE)
++
++static void
++sweet_early_map_final(void)
++{
++	const vm_map_address_t va = SWEET_EARLY_FB_VA;
++	assert(va + ARM_TT_L2_SIZE <= gVirtBase);
++	tt_entry_t *l1_ttep = &cpu_tte[(va & ARM_TT_L1_INDEX_MASK) >> ARM_TT_L1_SHIFT];
++	tt_entry_t l1 = *l1_ttep;
++	/* The L1 slot for the FB-alias VA may have no L2 table yet at this point
++	 * in arm_vm_init. Allocate one the same way arm_vm_init does, instead of
++	 * asserting. */
++	if ((l1 & (ARM_TTE_VALID | ARM_TTE_TYPE_MASK)) != (ARM_TTE_VALID | ARM_TTE_TYPE_TABLE)) {
++		vm_offset_t ptpage = alloc_ptpage(TRUE);
++		bzero((void *)ptpage, ARM_PGBYTES);
++		l1 = kvtophys(ptpage);
++		l1 &= ARM_TTE_TABLE_MASK;
++		/* 7195 has ARM_TTE_TABLE_APSHIFT but not the 8796 AP_* value names;
++		 * 0x1 is the 8796 ARM_TTE_TABLE_AP_USER_NA index. */
++		l1 |= ARM_TTE_VALID | ARM_TTE_TYPE_TABLE | (1ULL << ARM_TTE_TABLE_APSHIFT);
++		*l1_ttep = l1;
++		__asm__ volatile("dsb ishst" ::: "memory");
++	}
++	tt_entry_t *l2 = (tt_entry_t *)phystokv(l1 & ARM_TTE_TABLE_MASK);
++	tt_entry_t *slot = &l2[(va & ARM_TT_L2_INDEX_MASK) >> ARM_TT_L2_SHIFT];
++	assert(*slot == ARM_TTE_EMPTY);
++	*slot = 0x9c000000ULL | ARM_TTE_VALID | ARM_TTE_TYPE_BLOCK |
++	    ARM_TTE_BLOCK_SH(SH_OUTER_MEMORY) |
++	    ARM_TTE_BLOCK_ATTRINDX(CACHE_ATTRINDX_WRITECOMB) |
++	    ARM_TTE_BLOCK_AF | ARM_TTE_BLOCK_PNX | ARM_TTE_BLOCK_NX;
++	__asm__ volatile("dsb ishst" ::: "memory");
++}
++#endif /* ARM64_BOARD_CONFIG_SWEET */
++
+ void
+ arm_vm_init(uint64_t memory_size, boot_args * args)
+ {
+@@ -1993,14 +2036,26 @@
+ 
+ 	set_tbi();
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/* phystokv() must still refer to the bootstrap aperture here. */
++	sweet_early_map_final();
++#endif
+ 	arm_vm_physmap_init(args);
+ 	set_mmu_ttb_alternate(cpu_ttep & TTBR_BADDR_MASK);
+ 
+ 	ml_enable_monitor();
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/* The final TTBR1 is live; leave the outgoing VA=PA framebuffer alias.
++	 * Galaxy S9: the splash is 0x1400000 into the mapped 32MB block. */
++	sweet_early_relocate(SWEET_EARLY_FB_VA + (0x9d400000ULL & (ARM_TT_L2_SIZE - 1)));
++#endif
+ 	set_mmu_ttb(invalid_ttep & TTBR_BADDR_MASK);
+ 
+ 	flush_mmu_tlb();
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(10, "TTBR0 off; TLB flushed");
++#endif
+ #if defined(HAS_VMSA_LOCK)
+ 	vmsa_lock();
+ #endif
+@@ -2076,7 +2131,13 @@
+ 		arm_vm_map(cpu_tte, cur, ARM_PTE_EMPTY);
+ 	}
+ #endif
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(12, "calling pmap_bootstrap");
++#endif
+ 	pmap_bootstrap(dynamic_memory_begin);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(13, "pmap_bootstrap done");
++#endif
+ 
+ 	disable_preemption();
+ 
+@@ -2127,6 +2188,9 @@
+ 		va_l1 = va_l2_end;
+ 		cpu_l1_tte++;
+ 	}
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(14, "early I/O page tables ready");
++#endif
+ 
+ #if defined(KERNEL_INTEGRITY_KTRR) || defined(KERNEL_INTEGRITY_CTRR)
+ 	/*
+@@ -2140,8 +2204,24 @@
+ 	va_l1 = VM_MIN_KERNEL_ADDRESS & ~ARM_TT_L1_OFFMASK;
+ 	init_ptpages(cpu_tte, VM_MIN_KERNEL_ADDRESS & ~ARM_TT_L1_OFFMASK, VM_MAX_KERNEL_ADDRESS, FALSE, ARM_DYNAMIC_TABLE_XN);
+ #endif // defined(ARM_LARGE_MEMORY)
++#else
++	/*
++	 * SWEET (7195 port): the 8796 line has this branch and this line did not.
++	 * Without KTRR/CTRR nothing else covers the kernel heap L1 range, so the
++	 * heap page tables were never created and the kernel died right after
++	 * pmap_bootstrap with no output.
++	 */
++#if defined(ARM_LARGE_MEMORY)
++	init_ptpages(cpu_tte, KERNEL_PMAP_HEAP_RANGE_START & ~ARM_TT_L1_OFFMASK, VM_MAX_KERNEL_ADDRESS, FALSE, ARM_DYNAMIC_TABLE_XN);
++#elif defined(ARM64_BOARD_CONFIG_SWEET)
++	init_ptpages(cpu_tte, VM_MIN_KERNEL_ADDRESS & ~ARM_TT_L1_OFFMASK, VM_MAX_KERNEL_ADDRESS, FALSE, ARM_DYNAMIC_TABLE_XN);
++#endif
+ #endif // defined(KERNEL_INTEGRITY_KTRR) || defined(KERNEL_INTEGRITY_CTRR)
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(15, "kernel heap L1 tables ready");
++#endif
++
+ 	/*
+ 	 * Initialize l3 page table pages :
+ 	 *   cover this address range:
+@@ -2192,10 +2272,17 @@
+ 	 */
+ 	avail_start = (avail_start + PAGE_MASK) & ~PAGE_MASK;
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(16, "early fixed page tables ready");
++#endif
++
+ #if XNU_MONITOR
+ 	pmap_static_allocations_done();
+ #endif
+ 	first_avail = avail_start;
+ 	patch_low_glo_static_region(args->topOfKernelData, avail_start - args->topOfKernelData);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	sweet_early_mark(17, "static region patched; arm_vm_init returning");
++#endif
+ 	enable_preemption();
+ }

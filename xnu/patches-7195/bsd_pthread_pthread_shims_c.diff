@@ -1,0 +1,26 @@
+--- a/bsd/pthread/pthread_shims.c	2026-10-31 19:09:32
++++ b/bsd/pthread/pthread_shims.c	2026-11-10 21:06:36
+@@ -344,6 +344,23 @@
+ 	kern_return_t kr;
+ 	static_assert(offsetof(struct bsdthread_register_args, threadstart) + sizeof(user_addr_t) ==
+ 	    offsetof(struct bsdthread_register_args, wqthread));
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): the 8796 line logged this and every daemon that
++	 * did so survived; here containermanagerd dies of SIGTRAP without ever
++	 * reaching it. One line per registered process names the libpthread
++	 * generation (flags/tsd_offset) so the two can be compared directly.
++	 */
++	{
++		static volatile unsigned int sweet_pr_count = 0;
++		if (sweet_pr_count < 200) {
++			sweet_pr_count++;
++			printf("SWEET pthread_register #%u comm=%s flags=0x%x wq=0x%llx\n",
++			    sweet_pr_count, p->p_comm, uap->flags,
++			    (unsigned long long)uap->wqthread);
++		}
++	}
++#endif
+ 	kr = machine_thread_function_pointers_convert_from_user(current_thread(), &uap->threadstart, 2);
+ 	assert(kr == KERN_SUCCESS);
+ 

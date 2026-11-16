@@ -1,0 +1,58 @@
+--- a/osfmk/kern/debug.c	2026-10-31 19:09:32
++++ b/osfmk/kern/debug.c	2026-11-12 12:32:26
+@@ -111,6 +111,7 @@
+ #include <pexpert/pexpert.h> /* For gPanicBase */
+ #include <arm/caches_internal.h>
+ #include <arm/misc_protos.h>
++#include <arm64/sweet_early.h>
+ extern volatile struct xnu_hw_shmem_dbg_command_info *hwsd_info;
+ #endif
+ 
+@@ -858,6 +859,16 @@
+ 	mmiotrace_enabled = 0;
+ #endif
+ 
++#if defined(SWEET)
++	/*
++	 * SWEET: draw the panic on the early framebuffer before any of the
++	 * console machinery below runs. With serial=3 selected on a device with
++	 * no UART every later kprintf is a no-op, so this is the only copy of
++	 * the panic that can reach a screen.
++	 */
++	sweet_early_panic(panic_format_str, panic_args);
++#endif
++
+ 	ml_panic_trap_to_debugger(panic_format_str, panic_args, reason, ctx, panic_options_mask, panic_caller);
+ 
+ 	CPUDEBUGGERCOUNT++;
+@@ -950,6 +961,30 @@
+ {
+ 	paniclog_append_noflush("\nPlease go to https://panic.apple.com to report this panic\n");
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): leave the kernel instead of hanging in it.
++	 *
++	 * This was the end of every failed round: the panic screen stayed up
++	 * until somebody held the key combination to enter TWRP, so each kernel
++	 * test cost a human. sweet_early_panic() has already written the console
++	 * ring and the boot command block by the time we get here, and the next
++	 * boot therefore lands in recovery on its own.
++	 *
++	 * PSCI SYSTEM_RESET is the same call the shim's reboot() makes and the
++	 * same one sweet_psci_cpu_on() uses in iokit/Kernel/arm/SweetCPU.cpp.
++	 * If the SMC is refused, fall through to the spin: a refusal must not
++	 * turn a panic into undefined behaviour.
++	 */
++	{
++		register uint64_t x0 __asm__("x0") = 0x84000009ULL;	/* PSCI SYSTEM_RESET */
++		__asm__ volatile("smc #0" : "+r"(x0) : :
++		    "x1", "x2", "x3", "x4", "x5", "x6", "x7",
++		    "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15",
++		    "x16", "x17", "cc", "memory");
++	}
++#endif
++
+ 	for (;;) {
+ 	}
+ }

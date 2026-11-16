@@ -1,0 +1,21 @@
+--- a/osfmk/kern/host.c	2026-10-31 19:09:32
++++ b/osfmk/kern/host.c	2026-11-11 13:54:13
+@@ -1418,10 +1418,15 @@
+ 	assert(host_priv == &realhost);
+ 
+ 	/*
+-	 * Always enforce that the multiuser bit is set
+-	 * if a value is written to the commpage word.
++	 * SWEET (7195 port): do not force kIsMultiUserDevice, as the 8796 line
++	 * does not. That bit is what libdispatch's voucher_get_current_persona
++	 * reads out of the commpage to decide which persona it is running under;
++	 * pinning it on makes every process take the multi-user branch, and the
++	 * user identity that containermanagerd asks for never resolves. It then
++	 * exhausts its retries and crashes ("Could not obtain persona
++	 * attributes"), which takes backboardd and the window server with it.
+ 	 */
+-	commpage_update_multiuser_config(multiuser_config | kIsMultiUserDevice);
++	commpage_update_multiuser_config(multiuser_config);
+ 	return KERN_SUCCESS;
+ #else
+ 	(void)host_priv;

@@ -1,0 +1,41 @@
+--- a/bsd/kern/sys_generic.c	2026-10-31 19:09:32
++++ b/bsd/kern/sys_generic.c	2026-11-11 15:02:37
+@@ -512,6 +512,38 @@
+ 
+ 		error = dofilewrite(&context, fp, uap->cbuf, uap->nbyte,
+ 		    (off_t)-1, 0, retval);
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++		/*
++		 * SWEET (7195 port): relay containermanagerd's own output into the
++		 * persistent console log.
++		 *
++		 * The daemon survives ~56 s now and only then gives up, so the
++		 * reason it gives up is written somewhere we cannot reach: its own
++		 * file, or a socket. Anything it writes through write(2) -- log
++		 * file, stderr, whatever fd 2 points at -- is copied into the ring
++		 * here, so the next boot shows its actual complaint instead of our
++		 * guess at it. Bounded, and newlines are flattened so one record
++		 * stays one record.
++		 */
++		if (p->p_pid != 0 && strncmp(p->p_comm, "containermanager", 16) == 0 &&
++		    error == 0 && uap->nbyte > 0) {
++			static volatile unsigned int sweet_cm_out = 0;
++			if (sweet_cm_out < 80) {
++				char line[121];
++				size_t n = MIN((size_t)uap->nbyte, sizeof(line) - 1);
++				if (copyin(uap->cbuf, line, n) == 0) {
++					sweet_cm_out++;
++					for (size_t i = 0; i < n; i++) {
++						if (line[i] == '\n' || line[i] == '\r' || line[i] == 0) {
++							line[i] = ' ';
++						}
++					}
++					line[n] = '\0';
++					printf("CMOUT %s\n", line);
++				}
++			}
++		}
++#endif
+ 	}
+ 	fp_drop(p, fd, fp, 0);
+ 	return error;

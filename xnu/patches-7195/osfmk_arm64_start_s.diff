@@ -1,0 +1,142 @@
+--- a/osfmk/arm64/start.s	2026-10-31 19:09:32
++++ b/osfmk/arm64/start.s	2026-11-09 18:13:08
+@@ -230,7 +230,12 @@
+ 	adrp	x19, EXT(ResetHandlerData)@page			// Get address of the reset handler data
+ 	add		x19, x19, EXT(ResetHandlerData)@pageoff
+ 	mrs		x15, MPIDR_EL1						// Load MPIDR to get CPU number
+-#if HAS_CLUSTER
++#if HAS_CLUSTER || defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): same guard as the 8796 line. SDM845 puts the core
++	 * number in MPIDR Aff1, not Aff0, so masking with 0xFF alone never
++	 * matches the CPU data entry for any core above the first.
++	 */
+ 	and		x0, x15, #0xFFFF					// CPU number in Affinity0, cluster ID in Affinity1
+ #else
+ 	and		x0, x15, #0xFF						// CPU number is in MPIDR Affinity Level 0
+@@ -422,7 +427,59 @@
+ LEXT(bootstrap_instructions)
+ 
+ #endif /* defined(KERNEL_INTEGRITY_KTRR) || defined(KERNEL_INTEGRITY_CTRR) */
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++/* SWEET (7195 port): PSCI CPU_ON entry point, taken from the 8796 line.
++ * Physical entry: x0=context_id, no stack, MMU and caches off. Kept separate
++ * from __start, which expects x0=boot_args PA. Firmware may return at EL1 or
++ * EL2, so the level is checked before touching EL1 state; the EL2 path assumes
++ * no resident hypervisor and CNTVOFF_EL2=0 on boot.
++ */
+ 	.align 2
++	.globl EXT(sweet_secondary_entry)
++LEXT(sweet_secondary_entry)
++	msr		DAIFSet, #0xf
++	mrs		x1, CurrentEL
++	cmp		x1, #0x4
++	b.eq	Lsweet_secondary_el1
++	cmp		x1, #0x8
++	b.ne	Lsweet_secondary_bad_el
++	adrp	x1, EXT(LowExceptionVectorBase)@page
++	add		x1, x1, EXT(LowExceptionVectorBase)@pageoff
++	msr		VBAR_EL2, x1
++	/* No stage 2, AArch64 EL1, no EL2 interrupt or FP/debug traps. */
++	mov		x1, #(1 << 31)
++	msr		HCR_EL2, x1
++	msr		VTTBR_EL2, xzr
++	msr		CPTR_EL2, xzr
++	msr		MDCR_EL2, xzr
++	mov		x1, #3
++	msr		CNTHCTL_EL2, x1
++	msr		CNTVOFF_EL2, xzr
++	/* Permit ICC_SRE_EL1 and GIC CPU interface system-register access. */
++	mrs		x1, ICC_SRE_EL2
++	orr		x1, x1, #1
++	orr		x1, x1, #8
++	msr		ICC_SRE_EL2, x1
++	/* Known Armv8 SCTLR RES1 bits, M/C/I off, little endian. */
++	MOV64	x1, 0x30d00800
++	msr		SCTLR_EL1, x1
++	isb
++	adrp	x1, Lsweet_secondary_el1@page
++	add		x1, x1, Lsweet_secondary_el1@pageoff
++	msr		ELR_EL2, x1
++	mov		x1, #0x3c5			// DAIF masked, AArch64 EL1h
++	msr		SPSR_EL2, x1
++	eret
++Lsweet_secondary_bad_el:
++	b		.
++Lsweet_secondary_el1:
++	/* x0 is deliberately unused; reset_vector selects CPU data by MPIDR. */
++	msr		SPSel, #1
++	b		EXT(LowResetVectorBase)
++#endif /* ARM64_BOARD_CONFIG_SWEET */
++
++	.align 2
+ 	.globl EXT(resume_idle_cpu)
+ LEXT(resume_idle_cpu)
+ 	adrp	lr, EXT(arm_init_idle_cpu)@page
+@@ -769,6 +826,27 @@
+ 	/* Setup the KVA bootstrap mapping */
+ 	lsr		x5,  x24, #(ARM_TT_L2_SHIFT)
+ 	create_bootstrap_mapping x14, x15, x5, x3, x2, x9, x10, x11, x12, x13
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): splash framebuffer, taken from the 8796 line.
++	 * One 32MB Normal-NC block in the EXISTING V=P L2 table: framebuffer and
++	 * RAM share L1 index 0, so another create_bootstrap_mapping call would
++	 * replace the RAM L2 table. 16K pages, all bring-up RAM below 4GB, so the
++	 * first V=P L2 page is bootstrap_pagetables + 2*PGBYTES.
++	 * Galaxy S9: the splash starts 20MB into this block (0x9d400000) and
++	 * spills into the next one, which also holds TIMA (0x9f800000, no-map);
++	 * that block stays unmapped and sweet_early.c draws only the rows that
++	 * fit here.
++	 */
++	MOV64	x10, 0x9c000000
++	MOV64	x11, (ARM_TTE_TYPE_BLOCK | ARM_TTE_VALID | ARM_TTE_BLOCK_SH(SH_OUTER_MEMORY) | ARM_TTE_BLOCK_ATTRINDX(CACHE_ATTRINDX_WRITECOMB) | ARM_TTE_BLOCK_AF | ARM_TTE_BLOCK_PNX | ARM_TTE_BLOCK_NX)
++	orr		x11, x11, x10
++	and		x12, x10, #(ARM_TT_L2_INDEX_MASK)
++	lsr		x12, x12, #(ARM_TT_L2_SHIFT)
++	add		x13, x25, #(2 * PGBYTES)
++	str		x11, [x13, x12, lsl #TTE_SHIFT]
++#endif /* ARM64_BOARD_CONFIG_SWEET */
+ 
+ 	/* Ensure TTEs are visible */
+ 	dsb		ish
+@@ -873,6 +951,16 @@
+ 	ic		iallu
+ #endif
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): same completion barrier as the 8796 line. The TLB and
++	 * I-cache invalidations above are not ordered against the MMU enable that
++	 * follows on a non-Apple core without this.
++	 */
++	dsb		sy
++	isb
++#endif
++
+ 	/* If x21 is not 0, then this is either the start_cpu path or
+ 	 * the resume_idle_cpu path.  cpu_ttep should already be
+ 	 * populated, so just switch to the kernel_pmap now.
+@@ -985,6 +1073,12 @@
+ 	MSR_SCTLR_EL1_X0
+ 	isb		sy
+ 
++#if !defined(VMAPPLE) && !defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): the 8796 line skips this read-back check. SCTLR reads
++	 * back with RES1 bits set differently on non-Apple parts, so an exact
++	 * compare spins here forever (`bne .`) and the core never reaches C.
++	 */
+ 	MOV64	x1, SCTLR_EL1_DEFAULT
+ #if HAS_APPLE_PAC
+ 	orr		x1, x1, #(SCTLR_PACIB_ENABLED)
+@@ -995,6 +1089,7 @@
+ #endif /* HAS_APPLE_PAC */
+ 	cmp		x0, x1
+ 	bne		.
++#endif /* !VMAPPLE && !SWEET */
+ 
+ #if (!CONFIG_KERNEL_INTEGRITY || (CONFIG_KERNEL_INTEGRITY && !defined(KERNEL_INTEGRITY_WT)))
+ 	/* Watchtower

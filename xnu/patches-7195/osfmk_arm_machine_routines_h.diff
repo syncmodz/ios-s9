@@ -1,0 +1,16 @@
+--- a/osfmk/arm/machine_routines.h	2026-10-31 19:09:32
++++ b/osfmk/arm/machine_routines.h	2026-11-09 21:17:31
+@@ -755,7 +755,13 @@
+ 
+ /* Set the maximum number of CPUs */
+ void ml_set_max_cpus(
++	unsigned int max_cpus);
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++/* Same, but callable before the lock subsystem is up (SWEET early boot). */
++void ml_set_max_cpus_early(
+ 	unsigned int max_cpus);
++#endif
+ 
+ /* Return the maximum number of CPUs set by ml_set_max_cpus(), waiting if necessary */
+ unsigned int ml_wait_max_cpus(

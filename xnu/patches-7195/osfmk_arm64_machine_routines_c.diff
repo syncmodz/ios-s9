@@ -1,0 +1,97 @@
+--- a/osfmk/arm64/machine_routines.c	2026-10-31 19:09:32
++++ b/osfmk/arm64/machine_routines.c	2026-11-09 21:17:32
+@@ -27,6 +27,7 @@
+  */
+ 
+ #include <arm64/proc_reg.h>
++#include <arm64/sweet_early.h>
+ #include <arm/machine_cpu.h>
+ #include <arm/cpu_internal.h>
+ #include <arm/cpuid.h>
+@@ -397,6 +398,7 @@
+ #endif /* defined(HAS_IPI) && (DEVELOPMENT || DEBUG)*/
+ 
+ 	machine_conf();
++	sweet_early_mark(31, "machine_conf done");
+ 
+ 	/*
+ 	 * Kick off the kernel bootstrap.
+@@ -857,6 +859,20 @@
+ 	int64_t cluster_max_cpu_phys_id[MAX_CPU_CLUSTER_PHY_ID + 1];
+ 	cpu_boot_arg = MAX_CPUS;
+ 	PE_parse_boot_argn("cpus", &cpu_boot_arg, sizeof(cpu_boot_arg));
++
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): same clamp as the 8796 line. Without it a bare
++	 * `cpus=N` larger than the SoC limit walks off the topology arrays, and
++	 * cpus=0 leaves zero CPUs to enumerate.
++	 */
++	if (cpu_boot_arg == 0) {
++		cpu_boot_arg = 1;
++	}
++	if (cpu_boot_arg > SWEET_SMP_MAX_CPUS) {
++		cpu_boot_arg = SWEET_SMP_MAX_CPUS;
++	}
++#endif
+ 
+ 	err = SecureDTLookupEntry(NULL, "/cpus", &entry);
+ 	assert(err == kSuccess);
+@@ -958,8 +974,15 @@
+ 		}
+ #endif
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++		/* SWEET (7195 port): Aff1 encodes the core on SM7150, not an Apple
++		 * cluster ID, so the defaults must come from the device tree. */
++		cpu->die_cluster_id = (int)ml_readprop(child, "die-cluster-id", 0);
++		cpu->cluster_core_id = (int)ml_readprop(child, "cluster-core-id", cpu->phys_id >> 8);
++#else
+ 		cpu->die_cluster_id = (int)ml_readprop(child, "die-cluster-id", MPIDR_CLUSTER_ID(cpu->phys_id));
+ 		cpu->cluster_core_id = (int)ml_readprop(child, "cluster-core-id", MPIDR_CPU_ID(cpu->phys_id));
++#endif
+ 
+ 		cluster->num_cpus++;
+ 		cluster->cpu_mask |= 1ULL << cpu->cpu_id;
+@@ -997,7 +1020,21 @@
+ 	assert(topology_info.boot_cpu != NULL);
+ 	ml_read_chip_revision(&topology_info.chip_revision);
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
+ 	/*
++	 * SWEET (7195 port): publish the CPU count here, while the topology is
++	 * already final, instead of waiting for SweetCPU to do it after all cores
++	 * have come up. Every ml_wait_max_cpus() caller on the boot path
++	 * (kperf_init_early, mcache_init, mbinit, kern_mib, pthread workqueues)
++	 * blocks on this, and they all run long before IOKit starts the
++	 * secondary cores, so the kernel slept forever right after
++	 * "xnupost block done" with no panic. ml_set_max_cpus() is idempotent.
++	 */
++	ml_set_max_cpus_early(topology_info.max_cpu_id + 1);
++	sweet_early_mark(114, "max_cpus published early");
++#endif
++
++	/*
+ 	 * Set TPIDRRO_EL0 to indicate the correct cpu number, as we may
+ 	 * not be booting from cpu 0.  Userspace will consume the current
+ 	 * CPU number through this register.  For non-boot cores, this is
+@@ -1871,7 +1908,19 @@
+ {
+ 	uint64_t cntv_ctl = __builtin_arm_rsr64("CNTV_CTL_EL0");
+ 	return ((cntv_ctl & CNTV_CTL_EL0_ISTATUS) != 0) ? TRUE : FALSE;
++}
++
++/*
++ * SWEET (7195 port): the 8796 line has this empty stub because its PMAP_CS
++ * monitor is not used. The reference comes from arm_vm_init.c; without a
++ * definition the kernel does not link.
++ */
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++void
++ml_enable_monitor(void)
++{
+ }
++#endif /* ARM64_BOARD_CONFIG_SWEET */
+ 
+ static void
+ cache_trap_error(thread_t thread, vm_map_address_t fault_addr)

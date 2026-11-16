@@ -1,0 +1,162 @@
+--- a/bsd/vfs/vfs_lookup.c	2026-10-31 19:09:32
++++ b/bsd/vfs/vfs_lookup.c	2026-11-10 18:09:04
+@@ -329,6 +329,159 @@
+ 	}
+ #endif /* CONFIG_VOLFS */
+ 
++#if defined(ARM64_BOARD_CONFIG_SWEET)
++	/*
++	 * SWEET (7195 port): transcribed from the 8796 line, which reached the
++	 * home screen with it. System DMG firmlinks under /Library are 0-byte
++	 * files in our single-HFS conversion. Redirect to their /private/var
++	 * targets (as on APFS) so init_featureflags and Foundation paths
++	 * (backboardd) resolve instead of ENOTDIR / nil URL.
++	 *
++	 * Evidence from the device log (2026-11-10, first boot past
++	 * mount-phase-1): "init_featureflags: Failed to create or configure
++	 * directory /Library/Preferences/FeatureFlags ... NSPOSIXErrorDomain
++	 * Code=20 Not a directory" -- /Library/Preferences is exactly such a
++	 * 0-byte file here. The same pass gives /private/var/containers its
++	 * shape, which containermanagerd needs before it registers SystemGroup
++	 * (backboardd dies on BSSystem nil without it).
++	 */
++	{
++		static const char *sweet_redirects[][2] = {
++			{ "/private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches/com.apple.MobileGestalt.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/usr/libexec/Info.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/usr/sbin/Info.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/com.apple.iohid.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/com.apple.iohid.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/com.apple.coreaudio.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/com.apple.coreaudio.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/com.apple.backboardd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/com.apple.backboardd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/com.apple.mediaserverd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/com.apple.mediaserverd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/com.apple.coremedia.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/com.apple.coremedia.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/root/configd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/configd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/System/Library/Preferences/Logging/Subsystems/com.apple.SystemConfiguration.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Preferences/Logging/Subsystems/com.apple.SystemConfiguration.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Preferences/Logging/Subsystems/com.apple.defaults.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/System/Library/Preferences/Logging/Subsystems/com.apple.defaults.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/System/Library/Preferences/Logging/Subsystems/com.apple.coreaudio.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Preferences/Logging/Subsystems/com.apple.coreaudio.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/System/Library/Preferences/Logging/Subsystems/com.apple.BackBoard.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Preferences/Logging/Subsystems/com.apple.BackBoard.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/System/Library/Preferences/Logging/Subsystems/com.apple.coreaudio.mediaserverd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Preferences/Logging/Subsystems/com.apple.coreaudio.mediaserverd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/root/Library/Preferences/configd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/com.apple.coreaudio.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/com.apple.mediaserverd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/com.apple.backboardd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/com.apple.iohid.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/com.apple.coremedia.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/.GlobalPreferences.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/com.apple.backboardd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/com.apple.airplay.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/com.apple.coremedia.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/com.apple.mediaserverd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/com.apple.coreaudio.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/com.apple.iohid.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/com.apple.AirPlayRoutePrediction.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/preferences/configd.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/.GlobalPreferences.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/.GlobalPreferences.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/root/.GlobalPreferences.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/com.apple.airplay.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/com.apple.AirPlayRoutePrediction.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/com.apple.airplay.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/Library/Managed Preferences/mobile/com.apple.AirPlayRoutePrediction.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/.GlobalPreferences.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/com.apple.airplay.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/mobile/Library/Preferences/com.apple.AirPlayRoutePrediction.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/var/root/Library/Preferences/.GlobalPreferences.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/System/Library/Frameworks/AudioToolbox.framework/Codecs.plist", "/System/Library/CoreServices/SystemVersion.plist" },
++			{ "/System/Library/CoreServices/SystemVersion.bundle/en.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/CoreServices/SystemVersion.bundle/Base.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/CoreServices/SystemVersion.bundle//en.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/CoreServices/SystemVersion.bundle//Base.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/Frameworks/Foundation.framework/Base.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/Frameworks/Foundation.framework//Base.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/Frameworks/Foundation.framework//en_US.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/SystemConfiguration/EAPOLController.bundle/English.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/SystemConfiguration/EAPOLController.bundle/Base.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/SystemConfiguration/EAPOLController.bundle//English.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/SystemConfiguration/EAPOLController.bundle//Base.lproj", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			{ "/System/Library/CoreServices/SystemVersion.bundle", "/System/Library/Frameworks/Foundation.framework/en.lproj" },
++			/*
++			 * /System/Library/Preferences{,/Logging,/Logging/Subsystems} are
++			 * real trees on the APFS (290 subsystems). Redirecting them to
++			 * the empty /private/var/preferences copy lost those lookups.
++			 * /Library/Preferences* are real firmlinks, so they stay.
++			 */
++			{ "/Library/Preferences/Logging/Subsystems", "/private/var/preferences/Logging/Subsystems" },
++			{ "/Library/Preferences/Logging", "/private/var/preferences/Logging" },
++			{ "/Library/Preferences", "/private/var/preferences" },
++			{ "/private/var/preferences/SystemConfiguration", "/private/var/tmp/SystemConfiguration" },
++			{ "/var/preferences/SystemConfiguration", "/private/var/tmp/SystemConfiguration" },
++			{ "/var/preferences", "/private/var/preferences" },
++			{ "/Library/Managed Preferences/mobile", "/private/var/Managed Preferences/mobile" },
++			{ "/Library/Managed Preferences", "/private/var/Managed Preferences" },
++			{ "/var/Managed Preferences", "/private/var/Managed Preferences" },
++			{ "/AppleInternal/Library/HIDPlugins", "/System/Library/HIDPlugins" },
++			{ "/Library/Apple/System/Library/HIDPlugins", "/System/Library/HIDPlugins" },
++			{ "/Library/Keychains", "/private/var/Keychains" },
++			{ "/Library/Logs", "/private/var/logs" },
++			{ "/Library/MobileDevice", "/private/var/MobileDevice" },
++			/*
++			 * /private/var/containers does not exist on the System APFS (it
++			 * is created at first boot). Redirect the root only, so the
++			 * whole tree keeps its shape (collapsing Data/Shared/SystemGroup
++			 * onto one flat directory makes distinct containers share one).
++			 */
++			{ "/private/var/containers", "/private/var/tmp/containers" },
++			{ "/var/containers", "/private/var/tmp/containers" },
++			{ "/private/var/mobile/Library/Caches", "/private/var/tmp/mobileCaches" },
++			{ "/var/mobile/Library/Caches", "/private/var/tmp/mobileCaches" },
++			{ "/private/var/mobile/Library/Preferences", "/private/var/tmp/mobilePreferences" },
++			{ "/var/mobile/Library/Preferences", "/private/var/tmp/mobilePreferences" },
++			{ "/private/var/root/Library/Preferences", "/private/var/tmp/rootPreferences" },
++			{ "/var/root/Library/Preferences", "/private/var/tmp/rootPreferences" },
++			{ "/var/mobile/.CFUserTextEncoding", "/dev/null" },
++			{ "/etc/.mdns_debug", "/dev/null" },
++			{ "/dev/autofs_nowait", "/dev/null" },
++			{ "/usr/lib/libRosetta.dylib", "/dev/null" },
++			{ "/usr/local/lib/libRosetta.dylib", "/dev/null" },
++		};
++		for (int i = 0; i < (int)(sizeof(sweet_redirects) / sizeof(sweet_redirects[0])); i++) {
++			size_t src_len = strlen(sweet_redirects[i][0]);
++			if (strncmp(cnp->cn_pnbuf, sweet_redirects[i][0], src_len) == 0) {
++				char suffix = cnp->cn_pnbuf[src_len];
++				if (suffix == '\0' || suffix == '/') {
++					const char *target = sweet_redirects[i][1];
++					size_t tgt_len = strlen(target);
++					size_t suffix_len = strlen(&cnp->cn_pnbuf[src_len]);
++					if (tgt_len + suffix_len + 1 <= MAXPATHLEN) {
++						char *newpath = zalloc(ZV_NAMEI);
++						if (newpath != NULL) {
++							/* strlcpy, not the 3-arg strcpy FORTIFY macro. */
++							strlcpy(newpath, target, MAXPATHLEN);
++							strlcat(newpath, &cnp->cn_pnbuf[src_len], MAXPATHLEN);
++							if (cnp->cn_flags & HASBUF) {
++								zfree(ZV_NAMEI, cnp->cn_pnbuf);
++							}
++							cnp->cn_pnbuf = newpath;
++							cnp->cn_pnlen = MAXPATHLEN;
++							ndp->ni_pathlen = (u_int)(strlen(newpath) + 1);
++							cnp->cn_flags |= HASBUF;
++							/* Keep silent: flooding the console blocked backboardd. */
++						}
++					}
++					break;
++				}
++			}
++		}
++	}
++#endif
++
+ #if CONFIG_AUDIT
+ 	/* If we are auditing the kernel pathname, save the user pathname */
+ 	if (cnp->cn_flags & AUDITVNPATH1) {

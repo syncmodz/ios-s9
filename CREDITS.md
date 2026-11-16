@@ -5,7 +5,13 @@ work below, and claims none of it. Huge thanks to every author.
 
 ## Foundations
 - **ios-sweet** (dipa-studio) — the XNU + iOS 16.7 bring-up on a Qualcomm phone
-  (Redmi Note 10 Pro) that this Galaxy S9 port is forked from. MIT.
+  (Redmi Note 10 Pro) that this Galaxy S9 port started from. MIT.
+- **ios-flame** (NWylynko) — the iOS 16 port to the Pixel 4. Its `METAL-NEXT.md`
+  and `HANDOFF.md` are where the `ppnum_t` truncation in
+  `pmap_sync_page_attributes_phys` and the display-engine autorefresh rule were
+  found; both are in this tree now.
+- **Veerhooda's iOS 12 / OnePlus 2 port** — `op2hfs.py`, the in-place HFS+
+  reader/writer that `s9/tools/s9hfs.py` is derived from.
 - **Apple** — XNU and the iOS userland. XNU is under the Apple Public Source
   License (APSL 2.0); the iOS userland is Apple's and is **not** redistributed
   here. No Apple binaries are included in this repository.

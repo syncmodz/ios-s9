@@ -1,0 +1,19 @@
+--- a/osfmk/kern/zalloc.c	2026-10-31 19:09:32
++++ b/osfmk/kern/zalloc.c	2026-11-09 19:32:32
+@@ -4036,6 +4036,16 @@
+ #if __LP64__
+ #if CONFIG_EMBEDDED
+ #define ZONE_MAP_VIRTUAL_SIZE_LP64      (32ULL * 1024ULL * 1024 * 1024)
++#elif defined(ARM64_BOARD_CONFIG_SWEET)
++/*
++ * SWEET: the embedded branch is not taken here (CONFIG_EMBEDDED is off for
++ * this config), so the 128 GiB server size was used and zone_init() panicked
++ * in zone_init_allocate_va(0x0:0x2000000000) with KERN_NO_SPACE: the whole
++ * kernel VA span (VM_MIN..VM_MAX_KERNEL_ADDRESS) is only 112 GiB, and the
++ * 7195 kernel map is narrower still. 24 GiB is what the 8796 line, which
++ * boots to SpringBoard, gives the zone map.
++ */
++#define ZONE_MAP_VIRTUAL_SIZE_LP64      (24ULL * 1024ULL * 1024 * 1024)
+ #else
+ #define ZONE_MAP_VIRTUAL_SIZE_LP64      (128ULL * 1024ULL * 1024 * 1024)
+ #endif

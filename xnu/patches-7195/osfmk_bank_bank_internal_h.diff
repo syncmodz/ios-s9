@@ -1,0 +1,33 @@
+--- a/osfmk/bank/bank_internal.h	2026-10-31 19:09:32
++++ b/osfmk/bank/bank_internal.h	2026-11-15 02:46:36
+@@ -72,6 +72,13 @@
+ 	decl_lck_mtx_data(, bt_acc_to_pay_lock);           /* Lock to protect accounts to pay list */
+ 	decl_lck_mtx_data(, bt_acc_to_charge_lock);        /* Lock to protect accounts to charge list */
+ 	boolean_t                 bt_hasentitlement;       /* If the secure persona entitlement is set on the task */
++	/*
++	 * SWEET (7195 port): the persona's uid, from the 8796 line
++	 * (bank_internal.h:76). bank_task_can_adopt_persona() needs it to tell
++	 * "this persona belongs to me" from "this is a system persona owned by
++	 * nobody" (uid UINT_MAX) and from "some other user's persona".
++	 */
++	uint32_t                  bt_persona_uid;          /* Persona UID of the process */
+ #if CONFIG_THREAD_GROUPS
+ 	struct thread_group *         bt_thread_group;         /* Task's home thread group pointer */
+ #endif
+@@ -120,6 +127,16 @@
+ 	        (os_atomic_sub_orig(&(elem)->bt_made, (num), relaxed))
+ 
+ 
++/*
++ * SWEET (7195 port): a persona as the bank sees it -- id plus the owning uid.
++ * Transcribed from the 8796 line (bank_internal.h:128); the adopt check needs
++ * both, because "belongs to no user" (uid UINT_MAX) is a valid system persona.
++ */
++struct bank_persona {
++	uint32_t persona_id;
++	uint32_t persona_uid;
++};
++
+ struct bank_account {
+ 	struct bank_element ba_elem;                 /* Bank element */
+ 	ledger_t            ba_bill;                 /* Temporary ledger i.e. chit */

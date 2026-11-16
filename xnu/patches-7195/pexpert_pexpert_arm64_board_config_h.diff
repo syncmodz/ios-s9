@@ -1,0 +1,20 @@
+--- a/pexpert/pexpert/arm64/board_config.h	2026-10-31 19:09:32
++++ b/pexpert/pexpert/arm64/board_config.h	2026-11-09 01:54:53
+@@ -235,6 +235,17 @@
+ #define CORE_NCTRS                     8 /* Placeholder; KPC is not enabled for this target */
+ #endif  /* ARM64_BOARD_CONFIG_BCM2837 */
+ 
++#ifdef ARM64_BOARD_CONFIG_SWEET
++#include <pexpert/arm64/SWEET.h>
++
++#define MAX_L2_CLINE                   6
++#define MAX_CPUS                       8
++#define MAX_CPU_CLUSTERS               1
++
++#define CORE_NCTRS                     8 /* Placeholder; KPC is not enabled for this target */
++
++#endif  /* ARM64_BOARD_CONFIG_SWEET */
++
+ #ifndef HAS_UNCORE_CTRS
+ #undef UNCORE_VERSION
+ #undef UNCORE_PER_CLUSTER

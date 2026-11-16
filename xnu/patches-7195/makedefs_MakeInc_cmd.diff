@@ -1,0 +1,46 @@
+--- a/makedefs/MakeInc.cmd	2026-10-31 19:09:32
++++ b/makedefs/MakeInc.cmd	2026-11-09 02:09:04
+@@ -97,12 +97,12 @@
+ 	_v =
+ 	_vstdout =
+ 	_vstderr =
+-	XCRUN = /usr/bin/xcrun -verbose
++	XCRUN = xcrun -verbose
+ else
+ 	_v = @
+ 	_vstdout = > /dev/null
+ 	_vstderr = 2&> /dev/null
+-	XCRUN = /usr/bin/xcrun
++	XCRUN = xcrun
+ endif
+ 
+ VERBOSE_GENERATED_MAKE_FRAGMENTS = NO
+@@ -194,15 +194,21 @@
+ ifeq ($(DSYMUTIL),)
+ 	export DSYMUTIL := $(shell $(XCRUN) -sdk $(SDKROOT) -find dsymutil)
+ endif
+-ifeq ($(CTFCONVERT),)
+-	export CTFCONVERT := $(shell $(XCRUN) -sdk $(SDKROOT) -find ctfconvert)
+-endif
+-ifeq ($(CTFMERGE),)
+-	export CTFMERGE :=  $(shell $(XCRUN) -sdk $(SDKROOT) -find ctfmerge)
++# SWEET: match the 8796 tree. Xcode 26 no longer ships ctfconvert/ctfmerge, and
++# xcrun aborts the build when -find fails. Swallow stderr, key on origin, and
++# force DO_CTFMERGE=0 when the tool is absent.
++ifeq ($(origin CTFINSERT),undefined)
++	export CTFINSERT := $(shell $(XCRUN) -sdk $(SDKROOT) -find ctf_insert 2> /dev/null)
+ endif
+-ifeq ($(CTFINSERT),)
+-	export CTFINSERT := $(shell $(XCRUN) -sdk $(SDKROOT) -find ctf_insert)
++ifeq ($(origin CTFCONVERT),undefined)
++	export CTFCONVERT := $(shell $(XCRUN) -sdk $(SDKROOT) -find ctfconvert 2> /dev/null)
+ endif
++ifeq ($(origin CTFMERGE),undefined)
++	export CTFMERGE := $(shell $(XCRUN) -sdk $(SDKROOT) -find ctfmerge 2> /dev/null)
++	ifeq (,$(wildcard $(CTFMERGE)))
++		export DO_CTFMERGE := 0
++	endif
++endif
+ ifeq ($(NMEDIT),)
+ 	export NMEDIT := $(shell $(XCRUN) -sdk $(SDKROOT) -find nmedit)
+ endif

@@ -1,0 +1,35 @@
+--- a/iokit/Kernel/IOPlatformExpert.cpp	2026-10-31 19:09:32
++++ b/iokit/Kernel/IOPlatformExpert.cpp	2026-11-09 20:26:55
+@@ -26,6 +26,7 @@
+  * @APPLE_OSREFERENCE_LICENSE_HEADER_END@
+  */
+ 
++#include <arm64/sweet_early.h>
+ #include <IOKit/IOCPU.h>
+ #include <IOKit/IOPlatformActions.h>
+ #include <IOKit/IODeviceTreeSupport.h>
+@@ -2149,20 +2150,24 @@
+ 
+ #if !defined(__x86_64__)
+ 	entry = IORegistryEntry::fromPath( "/chosen", gIODTPlane );
++	sweet_early_mark(90, "uuid: fromPath done");
+ 	if (entry) {
+ 		OSData * data1;
+ 
+ 		data1 = OSDynamicCast( OSData, entry->getProperty( "unique-chip-id" ));
++		sweet_early_mark(91, "uuid: unique-chip-id");
+ 		if (data1 && data1->getLength() == 8) {
+ 			OSData * data2;
+ 
+ 			data2 = OSDynamicCast( OSData, entry->getProperty( "chip-id" ));
++			sweet_early_mark(92, "uuid: chip-id");
+ 			if (data2 && data2->getLength() == 4) {
+ 				SHA1_CTX     context;
+ 				uint8_t      digest[SHA_DIGEST_LENGTH];
+ 				const uuid_t space = { 0xA6, 0xDD, 0x4C, 0xCB, 0xB5, 0xE8, 0x4A, 0xF5, 0xAC, 0xDD, 0xB6, 0xDC, 0x6A, 0x05, 0x42, 0xB8 };
+ 
+ 				SHA1Init( &context );
++				sweet_early_mark(93, "uuid: SHA1Init done");
+ 				SHA1Update( &context, space, sizeof(space));
+ 				SHA1Update( &context, data1->getBytesNoCopy(), data1->getLength());
+ 				SHA1Update( &context, data2->getBytesNoCopy(), data2->getLength());

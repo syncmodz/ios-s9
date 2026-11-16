@@ -10,6 +10,8 @@
 #include "con.h"
 #include "loader.h"
 #include "plat.h"
+#include "bootlogo.h"
+#include "crumbs.h"
 
 #define RUN_SECONDS	90
 
@@ -24,12 +26,31 @@ void shim_main(uint64_t dtb)
 {
 	/* M1.1: 0x9d400000, 1440x2960, stride 5760, B G R A, autorefresh on */
 	fb_default();
-	con_clear(GREY);
-	con_title("SHIM M4: XNU");
-	con_hex2("SHIM", "dtb=", dtb, "img=", (uint32_t)(uintptr_t)shim_main);
+
+	/*
+	 * One static frame: the apple, centred, no spinner. The kernel takes this
+	 * framebuffer over at the jump and its early console paints the same
+	 * artwork in the band below the log, so anything animated here would
+	 * freeze on the first frame anyway.
+	 */
+	/*
+	 * SWEET: if the previous boot wrote crumbs, show them before anything
+	 * else. A boot that dies before the UFS log exists leaves its state here,
+	 * and this is the only channel that survives the reset. See crumbs.h and
+	 * the Galaxy S5 port's stub (s5/stub/stub.c).
+	 */
+	crumbs_show_previous();
+
+	draw_boot_scene();
+	crumbs_begin_boot();
 
 	stage = "loader";
 	const char *why = loader_boot(dtb);	/* returns only if it could not jump */
+
+	/* Only reach here on failure — switch to diagnostic view */
+	con_clear(GREY);
+	con_title("SHIM M4: XNU");
+	con_hex2("SHIM", "dtb=", dtb, "img=", (uint32_t)(uintptr_t)shim_main);
 	con_str("LOADER", why);
 	con_skip();
 	con_str("", "Tire uma foto desta tela!");

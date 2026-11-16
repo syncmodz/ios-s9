@@ -1,0 +1,17 @@
+--- a/bsd/vm/vm_unix.c	2026-10-31 19:09:32
++++ b/bsd/vm/vm_unix.c	2026-11-09 07:08:59
+@@ -1675,7 +1675,13 @@
+ 	return error;
+ }
+ 
+-#if CONFIG_EMBEDDED
++/*
++ * SWEET (7195 port): the 8796 line guards this with
++ * !XNU_TARGET_OS_OSX || ARM64_BOARD_CONFIG_SWEET. This line only had
++ * CONFIG_EMBEDDED, which the SWEET config does not set, so the syscall table
++ * entry for pid_hibernate (435) had no implementation to link against.
++ */
++#if !XNU_TARGET_OS_OSX || defined(ARM64_BOARD_CONFIG_SWEET)
+ /*
+  * Freeze the specified process (provided in args->pid), or find and freeze a PID.
+  * When a process is specified, this call is blocking, otherwise we wake up the

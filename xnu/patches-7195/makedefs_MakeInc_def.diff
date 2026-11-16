@@ -1,0 +1,41 @@
+--- a/makedefs/MakeInc.def	2026-10-31 19:09:32
++++ b/makedefs/MakeInc.def	2026-10-31 20:02:44
+@@ -32,7 +32,7 @@
+ SUPPORTED_ARM64_MACHINE_CONFIGS = NONE
+ else
+ SUPPORTED_ARM_MACHINE_CONFIGS = T8002 T8004
+-SUPPORTED_ARM64_MACHINE_CONFIGS = T7000 T7001 S8000 S8001 T8010 T8011 BCM2837 T8020 T8101 T8103
++SUPPORTED_ARM64_MACHINE_CONFIGS = T7000 T7001 S8000 S8001 T8010 T8011 BCM2837 T8020 T8101 T8103 SWEET
+ 
+ endif
+ 
+@@ -71,6 +71,7 @@
+ MACHINE_FLAGS_ARM64_T8020 = -DARM64_BOARD_CONFIG_T8020 -mcpu=vortex
+ MACHINE_FLAGS_ARM64_T8101 = -DARM64_BOARD_CONFIG_T8101 -mcpu=firestorm
+ MACHINE_FLAGS_ARM64_T8103 = -DARM64_BOARD_CONFIG_T8103 -mcpu=firestorm
++MACHINE_FLAGS_ARM64_SWEET = -DARM64_BOARD_CONFIG_SWEET		-march=armv8.2-a+crypto
+ 
+ 
+ #
+@@ -244,10 +245,13 @@
+ # Without embdedded device map, use a default arch string
+ export ARCH_STRING_FOR_CURRENT_MACHINE_CONFIG := $(shell echo $(CURRENT_ARCH_CONFIG) | tr A-Z a-z)
+ ifneq ($(filter ARM64,$(CURRENT_ARCH_CONFIG)),)
++# sweet's Cortex-A76/A55 have no pointer authentication: stay plain arm64
++ifneq ($(CURRENT_MACHINE_CONFIG),SWEET)
+ export ARCH_STRING_FOR_CURRENT_MACHINE_CONFIG := arm64e
+ endif
+ endif
+ endif
++endif
+ 
+ #
+ # This can have false negatives, and is used to avoid calling CTF when we'll build a static KC
+@@ -304,7 +308,6 @@
+ 	-fno-builtin \
+ 	-fno-common \
+ 	-ftrivial-auto-var-init=zero \
+-	-enable-trivial-auto-var-init-zero-knowing-it-will-be-removed-from-clang \
+ 	-fsigned-bitfields \
+ 	-fmerge-all-constants \
+ 	-fno-c++-static-destructors \
