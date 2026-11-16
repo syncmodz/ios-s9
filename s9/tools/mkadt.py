@@ -109,12 +109,15 @@ def build(seed=None, qemu=False, highmem=False, scale=3):
         ('embedded-panic-log-size', u32(PANIC_LOG_SIZE)),
         ('firmware-version', cstr('sweet-shim')),
         ('system-firmware-version', cstr('sweet-shim')),
-        # iBoot's SHA-384 of the boot manifest; /sbin/mount -P 1 exits unless
-        # it exists (bind mounts /private/preboot/<hex>/usr/standalone/firmware,
-        # tolerating a missing directory). Fixed stand-in value.
+        # The flat property is what XNU itself reads: IOGetBootManifestHash
+        # (iokit/bsddev/IOKitBSDInit.cpp:534) does
+        # IORegistryEntry::fromPath("/chosen")->getProperty("boot-manifest-hash").
+        # /sbin/mount -P 1 needs it to bind-mount
+        # /private/preboot/<hex>/usr/standalone/firmware. Keep it.
         ('boot-manifest-hash', BOOT_MANIFEST_HASH),
-        # libimg4 (cryptexd) aborts "failed to get crypto algorithm" without
-        # it; real A11+ device trees say sha2-384.
+        # crypto-hash-method stays a flat /chosen property: libimg4 (cryptexd)
+        # aborts "failed to get crypto algorithm" without it; real A11+ device
+        # trees say sha2-384.
         ('crypto-hash-method', cstr('sha2-384')),
         # MobileGestalt's screen class: display-scale (u32, default 0) comes
         # from /chosen, the pixel size from IOMobileFramebuffer. Scale 0 makes
@@ -142,6 +145,18 @@ def build(seed=None, qemu=False, highmem=False, scale=3):
         ('certificate-security-mode', u32(1)),
         ('effective-security-mode-sep', u32(1)),
     ], [node('memory-map', [ph()]),
+        # The same hash again, but where MobileGestalt looks for it.
+        # libMobileGestalt does NOT read the flat /chosen/boot-manifest-hash:
+        # it looks up IODeviceTree:/chosen/secure-boot-hashes and takes
+        # boot-manifest-hash from inside that node (the two strings sit
+        # together in the dylib, and the Apple D22AP device tree has exactly
+        # this child node -- a name, an AAPL,phandle, and no properties of its
+        # own). With the flat property only, MGCopyAnswer("BootManifestHash")
+        # returns nil and MSUEarlyBootTask logs "Failed to query gestalt for
+        # the BootManifestHash" -- which is what the 14.3 boot does and the
+        # 16.7.16 boot does not. Both copies are needed: XNU reads the flat
+        # one, the gestalt reads this one.
+        node('secure-boot-hashes', [ph(), ('boot-manifest-hash', BOOT_MANIFEST_HASH)]),
         # Local boot policy (kern_csr.c): SIP relaxed like `csrutil disable`
         # (lp-sip0: untrusted kexts, unrestricted FS, task_for_pid, kernel
         # debugger, dtrace, nvram), lp-sip1: unauthenticated (unsealed) root.
