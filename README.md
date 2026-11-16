@@ -84,7 +84,7 @@ a reset — that ring is how every boot is diagnosed, without filming the screen
 | `xnu/patches-7195/` | **The kernel we run**: xnu-7195 (iOS 14.3) as a snapshot diff + new files |
 | `xnu/patches/` | The earlier xnu-8796 (iOS 16) patch series, kept for reference |
 | `s9/NOTES.md` | The engineering log: every boot, crash and decision (Portuguese) |
-| `refs/` | **The reading list**: 15 XNU/iOS ports and tools, what each one teaches, and `clone-refs.sh` |
+| `refs/` | **The reading list**: 15 XNU/iOS ports and tools — see [The reading list](#the-reading-list) below |
 | `docs/` | Artwork |
 
 ## Building it
@@ -186,6 +186,36 @@ address at or above 4 GB flushed the wrong line. This device's DRAM runs to
 the console's ring, so a panic's backtrace existed only on the screen and died with the
 reset. Both now also append to the persistent ring. This is what makes a failed boot
 *inform* instead of requiring a photo.
+
+## The reading list
+
+Fifteen XNU/iOS ports and tools, and the one thing worth taking from each. Full
+detail in [`refs/REFS.md`](refs/REFS.md); `refs/clone-refs.sh` fetches them all
+from their own upstreams.
+
+| Source | What it gives you |
+| --- | --- |
+| [ios-sweet](https://github.com/dipa-studio/ios-sweet) | the origin of this family — the build system and the `sweet_*` driver convention |
+| [ios-flame](https://github.com/NWylynko/ios-flame) | **the `ppnum_t` truncation** (`METAL-NEXT.md` §4 item 1) — the bug that cost us 2018 MB of RAM |
+| [ios-sailfish](https://github.com/devilAPI/ios-sailfish) | the ordered Adreno bring-up: `0119` power probe, `0121` SMMU identity, `0124` MMIO without write-combining, `0126` 2D blit, `0127` RBCCU/SP |
+| [ios-topaz](https://github.com/MakrSas/ios-topaz) | the console lines that *prove* backboardd drew — telling "the display works" from "it looks like it works" |
+| [ios-apollo](https://github.com/enesuzun2002/hakios-apollo) | the zap shader through TrustZone, where Adreno bring-up stalls |
+| [Veerhooda/iOS](https://github.com/Veerhooda/iOS) | `tools/op2hfs.py`, the in-place HFS+ editor our `s9hfs.py` descends from |
+| [HakiOS](https://github.com/oosexgang/hackios-xnu-kernel) | QEMU and `fastboot boot` — iterate without flashing |
+| [Bergamota](https://github.com/ry-diffusion/Bergamota) | iOS 18 on **SDM845, our SoC family**. No license: read it, do not vendor it |
+| [Chlorophyll](https://github.com/ry-diffusion/Chlorophyll) | AIR→NIR — the only complete "Metal without Apple's driver" answer |
+| [metal2vulkan](https://github.com/steelbrain/metal2vulkan) | the other route: Metal on top of Vulkan |
+| [iOSPlus10](https://github.com/MellysInformejtik/slop) | arm64e/PAC, and when you do *not* need a shared-cache rewrite |
+| [Portsmith](https://github.com/Chromitsune/Portsmith-iOS) | the map: 115 ports and frameworks, pinned |
+| [klte-ios7](https://github.com/Quantitative101/iOS7-KLTE-GalaxyS5) | it works on ARMv7 and old iOS too |
+| [Taurine](https://github.com/Odyssey-Team/Taurine) | the iOS 14 jailbreak; rootful, proven from `bootstrap.swift` |
+| LineageOS SDM845 kernel | every register value we needed (GPLv2) |
+
+**Why links and not code.** The working set is 3.5 GB, most of it third-party
+code already published upstream. Four of these ship **no license at all**
+(`Bergamota`, `ios-topaz`, `ios-sailfish`, `hakios-sm8150`), which under
+copyright means all rights reserved — they cannot be redistributed. The rest
+could be, but copying them would only make this repository a stale mirror.
 
 ## Credits
 
