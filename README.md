@@ -139,11 +139,24 @@ version pinned a little too high, it is a layer that cannot work here.
 `xnu/patches/` (the iOS 16 series) is kept as reference. The kernel we run is
 `xnu/patches-7195/`.
 
-One caveat worth stating plainly: on a real device Taurine applies a kernel
-exploit first, and `jailbreakd` expects to have patched the kernel itself. Here
-the kernel is ours and already permissive, so the pieces are installed ahead of
-time — a configuration its authors never tested. Details in
-[`s9/jailbreak/README.md`](s9/jailbreak/README.md).
+The layer is checked against the actual binaries, not assumed. What that turned
+up, and what is still open:
+
+- **Sileo needs a Swift runtime that 14.3 does not ship.** Sileo 2.3 links
+  `libswiftCore`, `Foundation`, `UIKit` and five more **hard**, and iOS 14.3 has
+  only `libswiftDemangle` and `libswiftXCTest`. Without `org.swift.libswift`
+  (Swift 5.0, iOS 7.0+) Sileo dies at launch. It is in the fetch list now.
+- **`libsyringe-14` is built for iOS 14.4**, and we run 14.3. Neither the kernel
+  nor dyld rejects a high `minos` — verified in `mach_loader.c` and dyld-852.2 —
+  so it should load, but whether it injects is untested. `libsyringe-13` is the
+  fallback.
+- **`jailbreakd` runs without having patched the kernel.** On a real device
+  Taurine exploits first. It is off the critical path (libhooker carries its own
+  injector) and is not kept alive, so a crash is logged once.
+- **None of it has run on hardware.** The device is in repair; every line is
+  static analysis.
+
+Full table in [`s9/jailbreak/README.md`](s9/jailbreak/README.md).
 
 ## The two kernel fixes worth knowing
 

@@ -77,12 +77,14 @@ mount -t hfsplus -o rw,force "$loop" "$mnt"
 # Note it ships as .tar.gz that is really zstd, so let tar detect it.
 tar -xpf "$jb/bootstrap.tar.gz" --numeric-owner --keep-directory-symlink -C "$mnt"
 
-# libhooker + safemode + Sileo's files in place from the first boot (dpkg
-# registers them later). libhooker is the iOS 14 injection layer; ElleKit does
-# not exist for 14.3. Each deb's data.tar is xz or zst depending on the build,
-# so extract with whatever the member name says.
+# libhooker + safemode + Sileo + the Swift runtime in place from the first boot
+# (dpkg registers them later). libhooker is the iOS 14 injection layer; ElleKit
+# does not exist for 14.3. libswift is not optional: Sileo links libswiftCore
+# and friends hard, and 14.3 ships only libswiftDemangle/libswiftXCTest, so
+# without it Sileo dies at launch. Each deb's data.tar is xz or zst depending on
+# the build, so extract with whatever the member name says.
 for d in "$jb/debs"/*.deb; do
-	case "$d" in *sileo*|*libhooker*|*safemode*|*preferenceloader*)
+	case "$d" in *sileo*|*libhooker*|*safemode*|*preferenceloader*|*libswift*)
 		m=$(ar t "$d" | grep -E '^data\.tar') || continue
 		case "$m" in
 		*.zst) ar p "$d" "$m" | zstd -dc | tar -xp --numeric-owner --keep-directory-symlink -C "$mnt" ;;

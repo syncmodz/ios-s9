@@ -47,6 +47,14 @@ dl() { echo "  $1"; curl -fsSL -o "jb/debs/$2" "$1"; }
 # 2.5.1 is the iOS 16 one and is not used here.
 dl "$TAURINE_RAW/org.coolstar.sileo_2.3_iphoneos-arm.deb" 0-sileo.deb
 
+# Sileo is a Swift app and links libswiftCore/Foundation/UIKit/... HARD (not
+# weak). iOS 14.3 ships only libswiftDemangle and libswiftXCTest in
+# /usr/lib/swift, so without this package Sileo dies at launch with a dyld
+# "Library not loaded" error. This is the Swift 5.0 runtime, built for
+# iOS 7.0+, installed to /usr/lib/libswift/stable -- which is already on
+# Sileo's LC_RPATH, so no symlinks are needed.
+dl "$ODYSSEY_REPO/debs/org.swift.libswift_5.0-electra2_iphoneos-arm.deb" 8-libswift.deb
+
 # libhooker is the injection library on iOS 14. The -newabi variant is the one
 # that declares firmware (>= 14.0); the plain package pulls it in as a
 # dependency, but we fetch it explicitly so the image is complete offline.

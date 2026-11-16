@@ -74,6 +74,55 @@ so the arm64 slices are the ones that matter.
 - **First boot**: `/prep_bootstrap.sh` from the Taurine bootstrap runs `dpkg --configure`
   on the staged packages, same as on a real device.
 
+## What was checked, and what is still open
+
+Every claim below was verified against the actual binaries, not assumed.
+
+### Verified
+
+| check | result |
+| --- | --- |
+| All 11 download URLs | **200**, sizes match |
+| Architecture of every deb | `iphoneos-arm` (arm64) — what the iPhone XR 14.3 userland is |
+| Taurine bootstrap unpacks | yes: `usr/bin/dpkg`, `usr/bin/apt`, `prep_bootstrap.sh` |
+| Sileo's deps vs the bootstrap | `coreutils 8.32-10` ✓, `dpkg 1.20.9-1` ✓, `apt 2.3.3` ✓, `libzstd1 1.4.9-1` ✓ |
+| `firmware` / `cy+cpu.arm64` virtual packages | provided by dpkg itself; `firmware-sbin` is installed with `Pre-Depends: firmware (>= 11.0)`, which proves it |
+| libhooker's injector | `/etc/rc.d/libhooker` → `inject_criticald` (minos 13.7) + `libsyringe-14` + `/usr/lib/TweakInject.dylib` |
+| `libsyringe-14` minos | **14.4** — see below |
+| Sileo's Swift linkage | 8 **hard** links (`libswiftCore`, `Foundation`, `UIKit`, `ObjectiveC`, `Dispatch`, `Darwin`, `CoreGraphics`, `CoreFoundation`) |
+| iOS 14.3's Swift runtime | only `libswiftDemangle.dylib` and `libswiftXCTest.dylib` in `/usr/lib/swift` — **not enough** |
+| `org.swift.libswift 5.0-electra2` | ships all 8 in `/usr/lib/libswift/stable`, which is already on Sileo's `LC_RPATH`; `libswiftCore` is `LC_VERSION_MIN_IPHONEOS 7.0` |
+| Does the kernel enforce `minos`? | **no** — `mach_loader.c` only reads `LC_BUILD_VERSION` to detect simulator binaries, and only on x86_64 |
+| Does dyld-852.2 enforce `minos`? | **no** — it parses it for version APIs and dylib compat checks, never compares it to the OS version |
+
+### Open
+
+1. **`libsyringe-14` is built for iOS 14.4.** Its `LC_BUILD_VERSION` says
+   `minos 14.4`; we run 14.3. The dispatcher (`libsyringe`) picks it when
+   `kCFCoreFoundationVersionNumber >= 1664.0`, which 14.3 satisfies — so it
+   *will* be chosen. Since neither the kernel nor dyld rejects a high `minos`,
+   it should load; whether it *works* is untested. If injection fails, this is
+   the first suspect, and the fallback is `libsyringe-13` (minos 13.7), which
+   the same dispatcher picks below the threshold.
+
+2. **`jailbreakd` runs without having patched the kernel.** On a real device
+   Taurine exploits the kernel first. Here the kernel is ours and already
+   permissive, so `jailbreakd` starts in a configuration its authors never
+   tested. It is off the critical path (libhooker carries its own injector) and
+   gets `RunAtLoad` without `KeepAlive`, so a crash is logged once, not looped.
+
+3. **Sileo's `giveMeRoot` is `minos 15.2`.** Sileo calls it to escalate for
+   `dpkg`. Same reasoning as above — nothing rejects it — but it is the piece
+   most likely to misbehave, and if it does, Sileo will install nothing.
+
+4. **Nothing here has run on hardware.** The device is in repair. Every line
+   above is static analysis of the packages plus reading the kernel and dyld
+   sources.
+
+5. **This is all downstream of the boot blocker.** The GUI does not draw
+   because `containermanagerd` never gets a persona. No jailbreak code runs
+   before that is fixed.
+
 ## The one thing to know before trusting this
 
 On a real device Taurine **first applies a kernel exploit**, then unpacks the bootstrap and
