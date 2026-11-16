@@ -145,17 +145,16 @@ def build(seed=None, qemu=False, highmem=False, scale=3):
         ('certificate-security-mode', u32(1)),
         ('effective-security-mode-sep', u32(1)),
     ], [node('memory-map', [ph()]),
-        # The same hash again, but where MobileGestalt looks for it.
-        # libMobileGestalt does NOT read the flat /chosen/boot-manifest-hash:
-        # it looks up IODeviceTree:/chosen/secure-boot-hashes and takes
-        # boot-manifest-hash from inside that node (the two strings sit
-        # together in the dylib, and the Apple D22AP device tree has exactly
-        # this child node -- a name, an AAPL,phandle, and no properties of its
-        # own). With the flat property only, MGCopyAnswer("BootManifestHash")
-        # returns nil and MSUEarlyBootTask logs "Failed to query gestalt for
-        # the BootManifestHash" -- which is what the 14.3 boot does and the
-        # 16.7.16 boot does not. Both copies are needed: XNU reads the flat
-        # one, the gestalt reads this one.
+        # A second copy of the hash, for MobileGestalt. This is NOT a fix for
+        # anything: it was added on the theory that the gestalt reads
+        # IODeviceTree:/chosen/secure-boot-hashes and that the missing node was
+        # why MGCopyAnswer("BootManifestHash") returned nil. The boot test of
+        # 2026-11-16 disproved that -- the iOS 16 boot that reaches SpringBoard
+        # has the SAME ADT (flat property only, no node, identical 48-byte hash)
+        # and its gestalt answers fine. See s9/SBH-TEST-2026-11-16-negative.md.
+        # The node is kept because it is harmless (the path exists in the
+        # kernel, IOHibernateIO.cpp merges into it) and matches Apple's D22AP
+        # tree; do not cite it as the reason the gestalt works.
         node('secure-boot-hashes', [ph(), ('boot-manifest-hash', BOOT_MANIFEST_HASH)]),
         # Local boot policy (kern_csr.c): SIP relaxed like `csrutil disable`
         # (lp-sip0: untrusted kexts, unrestricted FS, task_for_pid, kernel
