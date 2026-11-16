@@ -84,6 +84,7 @@ a reset — that ring is how every boot is diagnosed, without filming the screen
 | `xnu/patches-7195/` | **The kernel we run**: xnu-7195 (iOS 14.3) as a snapshot diff + new files |
 | `xnu/patches/` | The earlier xnu-8796 (iOS 16) patch series, kept for reference |
 | `s9/NOTES.md` | The engineering log: every boot, crash and decision (Portuguese) |
+| `refs/` | **The reading list**: 15 XNU/iOS ports and tools, what each one teaches, and `clone-refs.sh` |
 | `docs/` | Artwork |
 
 ## Building it
