@@ -1,0 +1,956 @@
+Darwin Kernel Version 20.2.0: qui 12 nov 2026 14:04:37 -03; ios:xnu7195-local/BUILD/obj/DEVELOPMENT_ARM64_SWEET
+pmap_startup() init/release time: 27786 microsec
+pmap_startup() delayed init/release of 0 pages
+vm_page_bootstrap: 218374 free pages, 2858 wired pages, (up to 0 of which are delayed free)
+"vm_compressor_mode" is 4
+zone_init: submap[0] 0xfffffff132000000:0xfffffff264e60000 (4910M)
+zone_init: submap[1] 0xfffffff266668000:0xfffffff4cc328000 (9820M)
+zone_init: submap[2] 0xfffffff4cc334000:0xfffffff731ff4000 (9820M)
+zone leak detection enabled
+oslog_init completed, 16 chunks, 8 io pages
+standard timeslicing quantum is 10000 us
+standard background quantum is 2500 us
+WQ[wql_init]: init linktable with max:262144 elements (8388608 bytes)
+WQ[wqp_init]: init prepost table with max:262144 elements (8388608 bytes)
+mig_table_max_displ = 53 mach_kobj_count = 364
+kdp_core zlib memory 0x8000
+Serial requested, consistent debug disabled or debug boot arg not present, configuring debugging over serial
+iBoot version: sweet-shim
+"name" not a kext
+"AAPL,phandle" not a kext
+SWEET AMFI: built-in interface registered (XML entitlements)
+SWEET: starting device-tree platform expert
+SWEET: platform expert registered
+SWEET AKS: AppleKeyStore registered (no passcode, unlocked)
+SWEET WDT: IOWatchdog registered (accepts check-ins, never fires)
+SWEET SURF: IOCoreSurfaceRoot registered
+SWEET HID: buttons registered (test every 0 s)
+SWEET HID: touch registered
+SWEET BATTERY: static fallback, 100% 4200mV external=1 charging=0
+SWEET FB: AppleCLCD 1440x2960 stride 5760 at 0x9d400000, default surface 1, presented as 1440x2960
+SWEET CPU: requested=8 selected=8 (limit=8)
+SWEET CPU: cpu=0 mpidr=0x0 came alive; SGI1 OK
+SWEET CPU: cpu=1 CPU_ON target=0x100 entry_pa=0xa72da000 context=1
+SWEET CPU: cpu=1 PSCI CPU_ON rc=0
+SWEET CPU: cpu=1 mpidr=0x100 came alive; SGI1 OK
+SWEET CPU: cpu=2 CPU_ON target=0x200 entry_pa=0xa72da000 context=2
+SWEET CPU: cpu=2 PSCI CPU_ON rc=0
+SWEET CPU: cpu=2 mpidr=0x200 came alive; SGI1 OK
+SWEET CPU: cpu=3 CPU_ON target=0x300 entry_pa=0xa72da000 context=3
+SWEET CPU: cpu=3 PSCI CPU_ON rc=0
+SWEET CPU: cpu=3 mpidr=0x300 came alive; SGI1 OK
+SWEET CPU: cpu=4 CPU_ON target=0x400 entry_pa=0xa72da000 context=4
+SWEET CPU: cpu=4 PSCI CPU_ON rc=0
+SWEET CPU: cpu=4 mpidr=0x400 came alive; SGI1 OK
+SWEET CPU: cpu=5 CPU_ON target=0x500 entry_pa=0xa72da000 context=5
+SWEET CPU: cpu=5 PSCI CPU_ON rc=0
+SWEET CPU: cpu=5 mpidr=0x500 came alive; SGI1 OK
+SWEET CPU: cpu=6 CPU_ON target=0x600 entry_pa=0xa72da000 context=6
+SWEET CPU: cpu=6 PSCI CPU_ON rc=0
+SWEET CPU: cpu=6 mpidr=0x600 came alive; SGI1 OK
+SWEET CPU: cpu=7 CPU_ON target=0x700 entry_pa=0xa72da000 context=7
+SWEET CPU: cpu=7 PSCI CPU_ON rc=0
+SWEET CPU: cpu=7 mpidr=0x700 came alive; SGI1 OK
+SWEET CPU: 8/8 CPUs initialized, SGI1 verified
+SWEET HFS: hfs-627.100.6 registered
+mcache: 8 CPU(s), 64 bytes CPU cache line size
+mbinit: done [64 MB total pool size, (42/21) split]
+dlil_init: Waiting for all the create dlil kernel threads to get scheduled at least once.
+dlil_init: All the created dlil kernel threads have been scheduled at least once. Proceeding.
+ifnet_attach: All kernel threads created for interface lo0 have been scheduled at least once. Proceeding.
+ifnet_attach: All kernel threads created for interface gif0 have been scheduled at least once. Proceeding.
+ifnet_attach: All kernel threads created for interface stf0 have been scheduled at least once. Proceeding.
+SWEET UFS: "userdata" on LUN 0: first block 0x193408, 115519 MiB, read-write, DMA at 0xa9828000
+SWEET LOG: console log to the last 4100 KiB of the partition (block 0x1dc6fde)
+SWEET KEYS: arb=0x50000000 apids=512 pon-apid=172 gpio4-apid=261 pon=0x4/1 gpio=0/1 mode=0/1 en=0x80/1 subtype=0x11/1
+SWEET TOUCH: starting in 20 s
+SWEET USB: GDSC usb30_prim 0xf8222000 (on)
+SWEET USB: clk master       CBCR 0x00000001 (on)
+SWEET KEYS: key=1 down=1 pon=0x4 gpio4:c110=0
+SWEET USB: clk sleep        CBCR 0x00000001 (on)
+SWEET USB: clk utmi         CBCR 0x00000000 (on)
+SWEET USB: clk cfg-noc-axi  CBCR 0x00000001 (on)
+SWEET HID: key 0xe9 down (0 clients)
+SWEET USB: clk aggre-axi    CBCR 0x00000001 (on)
+SWEET USB: clk ahb2phy      CBCR 0x00000001 (on)
+SWEET USB: clk clkref       CBCR 0x00000001 (on)
+SWEET USB: DWC3 GSNPSID 0x5533300a GCTL 0x00102000 GSTS 0x7e800000 GUSB2PHYCFG 0x00002500
+SWEET USB: DWC3 DCFG 0x00080804 DCTL 0x00f00000 DEVTEN 0x00000000 DSTS 0x00520004 DALEPENA 0x00000000
+SWEET USB: DWC3 GEVNTADR 0x0000000000000000 GEVNTSIZ 0x00000000 GEVNTCOUNT 0x00000000 GHWPARAMS0 0x4020400a
+ifnet_attach: All kernel threads created for interface ue0 have been scheduled at least once. Proceeding.
+SWEET NET: kernel_task ue0 add address 192.168.7.2
+SWEET USB: ue0 192.168.7.2/24 up (err 0)
+SWEET USB: soft reset done after 1 ms, GCTL 0x00102000 DCFG 0x00080804
+SWEET USB: ep0 cmd 0x1 timeout
+SWEET USB: endpoint 0 setup failed
+SWEET USB: QUSB2 PLL_STATUS 0x64646464 PWR_CTRL1 0x23232323 PORT_TUNE1 0x75757575 TEST1 0x90909090
+BSD root: ufsroot0, major 2, minor 0
+hfs: mounted iPhoneOS on device b(2, 0)
+No POST boot-arg set.
+load_init_program: attempting to load /usr/appleinternal/sbin/launchd.development
+VM Swap Subsystem is ON
+load_init_program: attempting to load /sbin/launchd
+EXEC launchd pid=1
+SEGV launchd pc=0x100bfb3d8 far=0x100bfb3d8 lr=0x100bed0d4 mapped=0
+SEGV launchd pc=0x100c3be90 far=0x100c3be90 lr=0x100bfb418 mapped=0
+SEGV launchd pc=0x100c1445c far=0x100c1445c lr=0x100bed0dc mapped=0
+SEGV launchd pc=0x100c12f44 far=0x100c12f44 lr=0x100bed0dc mapped=0
+SEGV launchd pc=0x100c12f6c far=0x100c44e28 lr=0x100bed0dc mapped=0
+SEGV launchd pc=0x100c0e50c far=0x100c0e50c lr=0x100c12f84 mapped=0
+SEGV launchd pc=0x100c1c438 far=0x100c1c438 lr=0x100bed164 mapped=0
+SEGV launchd pc=0x100c3925c far=0x100c4b28b lr=0x100c10810 mapped=0
+SWEET AMFI: dyld policy call 90 from launchd
+dyld: setting comm page to 0x0
+SWEET pthread_register #1 comm=launchd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: launchd op 4
+SWEET NET: launchd lo0 add address 127.0.0.1
+EXEC fsck pid=2
+SWEET pthread_register #2 comm=fsck flags=0x4000 wq=0x1c9f3a86c
+failed to get filesystem info
+fsck: not booting main or diagnostic OS. Skipping fsck on OS container
+EXIT fsck pid=2 status=0
+EXEC mount pid=3
+SWEET pthread_register #3 comm=mount flags=0x4000 wq=0x1c9f3a86c
+failed to get filesystem info
+failed to get filesystem info
+mount: data volume missing, but not required in env: 0
+SWEET pthread_register #4 comm=mount flags=0x4000 wq=0x1c9f3a86c
+EXEC mount_hfs pid=4
+SWEET pthread_register #5 comm=mount_hfs flags=0x4000 wq=0x1c9f3a86c
+GetMasterBlock: Error 16 opening /dev/ufsroot0
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388090, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs: error truncating data fork!
+hfs: Removed 1 orphaned / unlinked files and 17 directories 
+EXIT mount_hfs pid=4 status=0
+/dev/ufsroot0 on / (hfs, local, noatime)
+SWEET BindFS: fallback ENOENT /private/preboot/5CBE36011D7D831515CDF1122A93FFCAD48B05E9194388AD12E9752A1AE4A5A0B934008B37985301041D7E086FFF5205/usr/standalone/firmware -> self-bind /usr/standalone/firmware
+EXIT mount pid=3 status=0
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: hello
+EXEC seputil pid=5
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Error>: Could not opt into 50 MB Jetsam high watermark: 22: Invalid argument
+Darwin Bootstrapper Version 7.0.0: Fri Nov 13 02:15:10 PST 2020; root:libxpc_executables-2038.40.38~273/launchd/RELEASE_ARM64
+boot-args = debug=0xc cpus=8 keepsyms=1 -noprogress rd=ufsroot0 unentitled_ios_sim_launch=1 ignition_level=1 wdt_test=no_user_checkin ufsrw=1 rootrw=1 ufswait=1 launchd_unsecure_cache=1 wdt=-1 sweetfb_noconsole=0 sweetfb_hz=60 sweettouch=1 sweettouchdelay=20 sweetusb=2 cs_enforcement_disable=1 sweetsample=- ufslogsecs=5 sweetcpufreq=0 allow_legacy_mach_msg=1 sweetnull=backboardd,SpringBoard,keybagd,containermanagerd,usermanagerd
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] (com.apple.xpc.launchd.domain.system) <Notice>: entering ondemand mode
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: fsck
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: mount-phase-1
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: data-protection
+SWEET pthread_register #6 comm=seputil flags=0x4000 wq=0x1c9f3a86c
+init_data_protection: No SEP present on this device
+EXIT seputil pid=5 status=0
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: finish-obliteration
+EXEC mobile_obliterator pid=6
+SWEET pthread_register #7 comm=mobile_obliterat flags=0x4000 wq=0x1c9f3a86c
+Obliterator: In INIT check
+IORegistryEntryFromPath failed
+Obliterator: No obliteration needed, continue booting, returning 0
+EXIT mobile_obliterat pid=6 status=0
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: commit-boot-mode
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: boot-mode committed: (null)
+EXIT launchd pid=7 status=0
+EXIT launchd pid=7 killed_by_signal=1 raw=0x1
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: restore-datapartition
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: restore-datapartition: optional boot task not present
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: mount-phase-2
+EXEC mount pid=8
+SWEET pthread_register #8 comm=mount flags=0x4000 wq=0x1c9f3a86c
+failed to get filesystem info
+failed to get filesystem info
+mount: data volume missing, but not required in env: 0
+SWEET BindFS: fallback ENOENT /private/var/hardware/Pearl/System/Library/Pearl/ReferenceFrames -> stub-bind /
+SWEET BindFS: fallback ENOENT /private/var/hardware/FactoryData/System/Library/Caches/com.apple.factorydata -> stub-bind /
+EXIT mount pid=8 status=0
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: init-with-data-volume
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: MSUEarlyBootTask
+EXEC MSUEarlyBootTask pid=9
+SWEET pthread_register #9 comm=MSUEarlyBootTask flags=0x4000 wq=0x1c9f3a86c
+main: MSUEarlyBootTask running
+SWEET Sandbox: MSUEarlyBootTask op 2
+copy_path_for_booted_os_data: Failed to query gestalt for the BootManifestHash
+main: Unable to get path for booted OS data
+EXIT MSUEarlyBootTask pid=9 status=0
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: fips
+EXEC cc_fips_test pid=10
+SWEET pthread_register #10 comm=cc_fips_test flags=0x4000 wq=0x1c9f3a86c
+Tracing: disabled
+FIPSPOST_USER [725266173] fipspost_post:157: [FIPSPOST][Module-ID] Apple corecrypto Module v11.1 [Apple ARM, User, Software]
+FIPSPOST_USER [725302771] fipspost_post:168: PASSED: (0 ms) - fipspost_post_hmac
+FIPSPOST_USER [725326657] fipspost_post:169: PASSED: (0 ms) - fipspost_post_integrity
+FIPSPOST_USER [725327713] fipspost_post:175: PASSED: (0 ms) - fipspost_post_indicator
+FIPSPOST_USER [725328114] fipspost_post:176: PASSED: (0 ms) - fipspost_post_aes_ecb
+FIPSPOST_USER [725328469] fipspost_post:177: PASSED: (0 ms) - fipspost_post_aes_cbc
+FIPSPOST_USER [725727324] fipspost_post:178: PASSED: (0 ms) - fipspost_post_rsa_sig
+FIPSPOST_USER [725785551] fipspost_post:179: PASSED: (0 ms) - fipspost_post_ecdsa
+FIPSPOST_USER [725804179] fipspost_post:180: PASSED: (0 ms) - fipspost_post_ecdh
+FIPSPOST_USER [725804655] fipspost_post:181: PASSED: (0 ms) - fipspost_post_aes_ccm
+FIPSPOST_USER [725805195] fipspost_post:182: PASSED: (0 ms) - fipspost_post_aes_cmac
+FIPSPOST_USER [726109652] fipspost_post:184: PASSED: (0 ms) - fipspost_post_pbkdf
+FIPSPOST_USER [726110242] fipspost_post:185: PASSED: (0 ms) - fipspost_post_kdf_ctr
+FIPSPOST_USER [726143623] fipspost_post:186: PASSED: (0 ms) - fipspost_post_aes_gcm
+FIPSPOST_USER [726144117] fipspost_post:187: PASSED: (0 ms) - fipspost_post_aes_xts
+FIPSPOST_USER [726146936] fipspost_post:188: PASSED: (0 ms) - fipspost_post_tdes_cbc
+FIPSPOST_USER [726147635] fipspost_post:189: PASSED: (0 ms) - fipspost_post_drbg_ctr
+FIPSPOST_USER [726149186] fipspost_post:190: PASSED: (0 ms) - fipspost_post_drbg_hmac
+FIPSPOST_USER [726498835] fipspost_post:192: PASSED: (0 ms) - fipspost_post_ffdh
+FIPSPOST_USER [726897413] fipspost_post:193: PASSED: (0 ms) - fipspost_post_rsa_enc_dec
+FIPSPOST_USER [726897813] fipspost_post:213: all tests PASSED (0 ms)
+EXIT cc_fips_test pid=10 status=0
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: keybag
+EXEC keybagd pid=11
+SWEET pthread_register #11 comm=keybagd flags=0x4000 wq=0x1c9f3a86c
+****** IN MKB_INIT ****
+SWEET AKS: keybagd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: keybagd sel 14 arg0 0 in 0/0 out 1/0 -> 0x0
+SWEET AKS: keybagd sel 14 arg0 0 in 0/0 out 1/0 -> 0x0
+MKB_INIT: mount is with NO CPROTECT:0x1400d000 on  (/private/var)
+`~#mMKB_INIT: mount point (/private/var) does not support Data Protection
+MKB_INIT: System Keybag loaded
+MKB_INIT: Could not get options entry from the device tree
+Unable to set /private/var//tmp to class D!****** STARTING EARLYBOOT SETUP ****
+MKB_INIT: STARTING EARLYBOOT SETUP
+SWEET fixup: start
+SWEET fixup mkdir /private/var/keybags err=17
+SWEET fixup mkdir /private/var/db err=17
+SWEET fixup mkdir /private/var/preferences err=17
+SWEET fixup mkdir /private/var/containers err=0
+SWEET fixup mkdir /private/var/containers/Bundle err=0
+SWEET fixup mkdir /private/var/containers/Data err=0
+SWEET fixup mkdir /private/var/containers/Data/System err=0
+SWEET fixup mkdir /private/var/containers/Temp err=0
+SWEET fixup mkdir /private/var/containers/Shared err=0
+SWEET fixup mkdir /private/var/containers/Shared/SystemGroup err=0
+SWEET fixup mkdir /private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache err=0
+SWEET fixup mkdir /private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library err=0
+SWEET fixup mkdir /private/var/containers/Shared/SystemGroup/systemgroup.com.apple.mobilegestaltcache/Library/Caches err=0
+SWEET fixup mkdir /private/var/containers/Shared/SystemGroup/systemgroup.com.apple.lsd.iconscache err=0
+SWEET fixup mkdir /private/var/containers/Shared/SystemGroup/systemgroup.com.apple.lsd.iconscache/Library err=0
+SWEET fixup mkdir /private/var/containers/Shared/SystemGroup/systemgroup.com.apple.lsd.iconscache/Library/Caches err=0
+SWEET fixup mkdir /private/var/tmp/mobilePreferences err=0
+SWEET fixup mkdir /private/var/mobile/Library/Preferences err=17
+hfs: set LowDisk: vol:iPhoneOS, freeblks:203967, warninglimit:262140
+SWEET fixup write /private/var/mobile/Library/Preferences/com.apple.SetupAssistant.plist err=0
+SWEET fixup write /private/var/mobile/Library/Preferences/com.apple.purplebuddy.plist err=0
+SWEET fixup write /private/var/mobile/Library/Preferences/com.apple.purplebuddy.notbackedup.plist err=0
+SWEET fixup write /private/var/mobile/Library/Preferences/com.apple.migration.plist err=0
+SWEET fixup: done
+MKB_INIT: Could not open /private/var//keybags/usersession.kb: No such file or directory
+MKB_INIT: LoadAllUserSessions: diskLoadUserSessions failed
+PALLOC login='C236EB81-D3A5-48DA-9724-88E33490757F' want_id=1000 err=0 got_id=1000 pna_uid=1000
+PRESP keybagd req_v=1 id=1000 uid=1000 type=5 name='C236EB81-D3A5-48DA-9724-88E33490757F'
+PALLOC login='2B4FF15C-317A-44E2-9F5E-5F173D2F2FCE' want_id=99 err=0 got_id=99 pna_uid=99
+PRESP keybagd req_v=1 id=99 uid=99 type=4 name='2B4FF15C-317A-44E2-9F5E-5F173D2F2FCE'
+PALLOC login='4D8A63F2-23F1-46D5-A979-9943FB74EEC6' want_id=199 err=0 got_id=199 pna_uid=199
+PRESP keybagd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+MKB_INIT: setup kernel personas
+MKB_INIT: DONE EARLYBOOT SETUP
+TUP
+****** DONE EARLYBOOT SETUP ****
+****** DONE MKB_INIT ****
+EXIT keybagd pid=11 status=0
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: usermanagerd
+EXIT launchd pid=12 status=0
+EXIT launchd pid=12 killed_by_signal=1 raw=0x1
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: usermanagerd: optional boot task not present
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Notice>: launchd logging initialized
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388763, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+Wed Dec 31 16:00:37 1969 localhost com.apple.xpc.launchd[1] <Error>: Failed to remove file or directory: name = diskcacherepository.plist, error = 5: Input/output error. Further logging suppressed.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396530, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396531, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388259, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388267, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396529, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396671, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2397160, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396674, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396676, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396780, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396782, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2397158, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2397159, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2396487, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+Wed Dec 31 16:00:38 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: xpcroleaccountd
+EXEC xpcroleaccountd pid=13
+SWEET pthread_register #12 comm=xpcroleaccountd flags=0x4000 wq=0x1c9f3a86c
+EXIT xpcroleaccountd pid=13 status=0
+Wed Dec 31 16:00:38 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: init_featureflags
+EXEC init_featureflags pid=14
+SWEET pthread_register #13 comm=init_featureflag flags=0x4000 wq=0x1c9f3a86c
+init_featureflags: skipping directory: /Library/Preferences/FeatureFlags/DomainEXIT init_featureflag pid=14 status=0
+Wed Dec 31 16:00:38 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: fud
+EXEC fud pid=15
+SWEET pthread_register #14 comm=fud flags=0x4000 wq=0x1c9f3a86c
+fud: -[FudEarlyBoot doFUDEarlyBoot:](): Starting Early Boot
+fud: No Early Boot Accessories
+fud: -[FudEarlyBoot doFUDEarlyBoot:](): End Early Boot
+EXIT fud pid=15 status=0
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: tzinit
+EXEC tzinit pid=16
+SWEET pthread_register #15 comm=tzinit flags=0x4000 wq=0x1c9f3a86c
+EXIT tzinit pid=16 status=0
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: finish-restore
+EXEC FinishRestoreFromBackup pid=17
+SWEET pthread_register #16 comm=FinishRestoreFro flags=0x4000 wq=0x1c9f3a86c
+EXIT FinishRestoreFro pid=17 status=0
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: finish-demo-restore
+EXEC finish_demo_restore pid=18
+SWEET pthread_register #17 comm=finish_demo_rest flags=0x4000 wq=0x1c9f3a86c
+EXIT finish_demo_rest pid=18 status=0
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: sysstatuscheck
+EXEC sysstatuscheck pid=19
+SWEET pthread_register #18 comm=sysstatuscheck flags=0x4000 wq=0x1c9f3a86c
+EXIT sysstatuscheck pid=19 status=1
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: prng_seedctl
+EXEC prng_seedctl pid=20
+SWEET pthread_register #19 comm=prng_seedctl flags=0x4000 wq=0x1c9f3a86c
+kern.prng.user_reseed_count: (-1) (2) No such file or directory
+failed to load virtual random: (-147) (-536870212)
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388177, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+failed to store kernel prng seed: (-76) (5) Input/output error
+EXIT prng_seedctl pid=20 status=14
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: Doing boot task: launchd_cache_loader
+EXEC launchd_cache_loader pid=21
+SWEET pthread_register #20 comm=launchd_cache_lo flags=0x4000 wq=0x1c9f3a86c
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+EXIT launchd_cache_lo pid=21 status=0
+PALLOC login='user.501' want_id=501 err=0 got_id=501 pna_uid=501
+PRESP launchd req_v=1 id=501 uid=501 type=2 name='user.501'
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: launchd UUID: E8BC7E15-59BC-38A4-A83D-84D4C36F0DA6
+Wed Dec 31 16:00:39 1969 localhost com.apple.xpc.launchd[1] <Notice>: Early boot complete. Continuing system boot.
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+PFIND launchd err=0 login='(null)' id=-1 type=6 max=1 found=1
+EXEC xpcproxy pid=22
+SWEET pthread_register #21 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=23
+SWEET pthread_register #22 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=24
+SWEET pthread_register #23 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=25
+SWEET pthread_register #24 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=26
+SWEET pthread_register #25 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=27
+SWEET pthread_register #26 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=28
+SWEET pthread_register #27 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=29
+SWEET pthread_register #28 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=30
+SWEET pthread_register #29 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=31
+SWEET pthread_register #30 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=32
+SWEET pthread_register #31 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=33
+SWEET pthread_register #32 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=34
+SWEET pthread_register #33 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=35
+SWEET pthread_register #34 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=36
+SWEET pthread_register #35 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=37
+SWEET pthread_register #36 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=38
+SWEET pthread_register #37 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=39
+SWEET pthread_register #38 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=40
+SWEET pthread_register #39 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=41
+SWEET pthread_register #40 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=42
+SWEET pthread_register #41 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=43
+SWEET pthread_register #42 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=44
+SWEET pthread_register #43 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=45
+SWEET pthread_register #44 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=46
+SWEET pthread_register #45 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=47
+SWEET pthread_register #46 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=48
+SWEET pthread_register #47 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=49
+SWEET pthread_register #48 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=50
+SWEET pthread_register #49 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=51
+EXEC SpringBoard pid=52
+SWEET pthread_register #50 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=53
+SWEET pthread_register #51 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=54
+SWEET pthread_register #52 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=55
+SWEET pthread_register #53 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=56
+SWEET pthread_register #54 comm=SpringBoard flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #55 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=57
+SWEET pthread_register #56 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=58
+SWEET pthread_register #57 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=59
+SWEET pthread_register #58 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=60
+SWEET pthread_register #59 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=61
+SWEET pthread_register #60 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=62
+SWEET pthread_register #61 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=63
+SWEET pthread_register #62 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=64
+SWEET pthread_register #63 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=65
+SWEET pthread_register #64 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=66
+SWEET pthread_register #65 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=67
+SWEET pthread_register #66 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=68
+SWEET pthread_register #67 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=69
+SWEET pthread_register #68 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=70
+SWEET pthread_register #69 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=71
+SWEET pthread_register #70 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=72
+SWEET pthread_register #71 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=73
+SWEET pthread_register #72 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=74
+SWEET pthread_register #73 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=75
+SWEET pthread_register #74 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=76
+SWEET pthread_register #75 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=77
+SWEET pthread_register #76 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=78
+SWEET pthread_register #77 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=79
+SWEET pthread_register #78 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC xpcproxy pid=80
+SWEET pthread_register #79 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC UserEventAgent pid=22
+EXEC runningboardd pid=25
+SWEET Sandbox: xpcproxy privilege 1002 denied
+EXEC keybagd pid=38
+EXEC logd pid=23
+EXEC fseventsd pid=26
+EXEC IOMFB_FDR_Loader pid=33
+EXEC remoted pid=39
+EXEC backboardd pid=55
+EXEC delay backboardd idx=1 2s for container/gestalt settle
+EXEC configd pid=31
+EXEC delay configd idx=2 2s for container/gestalt settle
+EXEC DumpPanic pid=40
+SWEET pthread_register #80 comm=keybagd flags=0x4000 wq=0x1c9f3a86c
+EXEC lockdownd pid=64
+EXEC notifyd pid=74
+SWEET pthread_register #81 comm=UserEventAgent flags=0x4000 wq=0x1c9f3a86c
+SWEET AKS: keybagd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+EXEC fud pid=43
+EXEC CommCenter pid=80
+EXEC cloudpaird pid=60
+SWEET pthread_register #82 comm=fud flags=0x4000 wq=0x1c9f3a86c
+EXEC rapportd pid=75
+SWEET pthread_register #83 comm=DumpPanic flags=0x4000 wq=0x1c9f3a86c
+EXEC mediaserverd pid=27
+EXEC delay mediaserverd idx=3 2s for container/gestalt settle
+EXEC sleepd pid=65
+EXEC watchdogd pid=48
+SWEET pthread_register #84 comm=remoted flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #85 comm=IOMFB_FDR_Loader flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #86 comm=logd flags=0x4000 wq=0x1c9f3a86c
+EXEC wifid pid=42
+EXEC locationd pid=59
+SWEET pthread_register #87 comm=fseventsd flags=0x4000 wq=0x1c9f3a86c
+EXEC sharingd pid=57
+SWEET pthread_register #88 comm=notifyd flags=0x4000 wq=0x1c9f3a86c
+EXEC atc pid=36
+EXEC timed pid=58
+EXEC bluetoothd pid=76
+EXEC OTACrashCopier pid=67
+EXEC fairplayd.H2 pid=79
+SWEET Sandbox: logd privilege 1002 denied
+EXEC ptpd pid=69
+EXEC identityservicesd pid=47
+SWEET pthread_register #89 comm=lockdownd flags=0x4000 wq=0x1c9f3a86c
+EXEC AppleCredentialManagerDaemon pid=70
+EXEC atwakeup pid=49
+EXEC mobiletimerd pid=45
+EXEC peakpowermanagerd pid=72
+EXEC imagent pid=62
+EXEC routined pid=29
+EXEC WirelessRadioManagerd pid=37
+EXEC wcd pid=50
+SWEET pthread_register #90 comm=mobiletimerd flags=0x4000 wq=0x1c9f3a86c
+EXEC remindd pid=73
+EXEC seld pid=46
+SWEET pthread_register #91 comm=AppleCredentialM flags=0x4000 wq=0x1c9f3a86c
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388229, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+SWEET Sandbox: mobiletimerd privilege 1002 denied
+SWEET pthread_register #92 comm=timed flags=0x4000 wq=0x1c9f3a86c
+EXEC misd pid=30
+SWEET Sandbox: timed privilege 1002 denied
+SWEET pthread_register #93 comm=sharingd flags=0x4000 wq=0x1c9f3a86c
+EXEC thermalmonitord pid=53
+EXEC magicswitchd pid=56
+EXEC distnoted pid=68
+SWEET pthread_register #94 comm=identityservices flags=0x4000 wq=0x1c9f3a86c
+EXEC containermanagerd pid=61
+EXEC mtmergeprops pid=77
+SWEET pthread_register #95 comm=imagent flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #96 comm=rapportd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #97 comm=bluetoothd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: rapportd privilege 1002 denied
+SWEET pthread_register #98 comm=mtmergeprops flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #99 comm=wifid flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #100 comm=atc flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #101 comm=ptpd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #102 comm=watchdogd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #103 comm=sleepd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #104 comm=distnoted flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: sleepd privilege 1002 denied
+SWEET Sandbox: identityservices privilege 1002 denied
+SWEET pthread_register #105 comm=containermanager flags=0x4000 wq=0x1c9f3a86c
+SWEET WDT: watchdogd sel 0 in 0/0 out 1/0 -> ok
+SWEET pthread_register #106 comm=thermalmonitord flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #107 comm=fairplayd.H2 flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: fairplayd.H2 privilege 1002 denied
+SWEET pthread_register #108 comm=locationd flags=0x4000 wq=0x1c9f3a86c
+EXEC powerd pid=34
+SWEET Sandbox: atc privilege 1002 denied
+SWEET pthread_register #109 comm=CommCenter flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: bluetoothd privilege 1002 denied
+EXIT fairplayd.H2 pid=79 status=-42306
+SWEET Sandbox: distnoted privilege 1002 denied
+SWEET Sandbox: ptpd privilege 1002 denied
+SWEET Sandbox: imagent privilege 1002 denied
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388267, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+SWEET Sandbox: CommCenter privilege 1002 denied
+EXIT IOMFB_FDR_Loader pid=33 status=1
+SWEET Sandbox: sharingd privilege 1002 denied
+EXIT bluetoothd pid=76 status=0
+EXIT DumpPanic pid=40 status=1
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+PGET UserEventAgent persona=present id=199
+SWEET AKS: UserEventAgent sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: UserEventAgent sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+SWEET AKS: UserEventAgent sel 103 arg0 0 in 0/0 out 1/0 -> 0x0
+SWEET AKS: UserEventAgent sel 102 arg0 0 in 0/0 out 0/0 -> 0x0
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+EXEC amsaccountsd pid=78
+SWEET pthread_register #110 comm=configd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #111 comm=backboardd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #112 comm=mediaserverd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: mediaserverd privilege 1002 denied
+SWEET Sandbox: backboardd privilege 1002 denied
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+SWEET Sandbox: SpringBoard privilege 1002 denied
+EXEC xpcproxy pid=81
+EXIT configd pid=31 status=0
+EXIT configd pid=31 killed_by_signal=11 raw=0xb
+EXEC xpcproxy pid=82
+SWEET pthread_register #113 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC ReportCrash pid=82
+SWEET pthread_register #114 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #115 comm=ReportCrash flags=0x4000 wq=0x1c9f3a86c
+EXIT watchdogd pid=48 status=0
+Failed to send exception EXC_CORPSE_NOTIFY. error code: 5 for pid 31
+EXEC networkserviceproxy pid=81
+PGET identityservices persona=present id=199
+SWEET AKS: identityservices sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: identityservices sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: identityservices sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: identityservices sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PGET rapportd persona=present id=199
+SWEET AKS: rapportd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: rapportd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PGET backboardd persona=present id=199
+SWEET AKS: backboardd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: backboardd sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: backboardd sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: backboardd sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET Sandbox: mediaserverd privilege 1015 denied
+process mediaserverd[27] denied attempt to escape CPU monitor (missing required entitlement).
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+PGET identityservices persona=present id=199
+PRESP identityservices req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+SWEET Sandbox: CommCenter op 12
+|backboardd| objc[55]: Class _GCHapticEvent is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2ab10) and /System/Library/HIDPlugins/ServicePlugins/DualShock4HIDServicePlugin.|backboardd| ck4HIDServicePlugin (0x102d4aae0). One of the two will be used. Which one is undefined.
+|backboardd| objc[55]: Class GCHapticMotor is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2ab60) and /System/Library/HIDPlugins/ServicePlugins/DualShock4HIDServicePlugin.p|backboardd| k4HIDServicePlugin (0x102d4ab30). One of the two will be used. Which one is undefined.
+|backboardd| objc[55]: Class GCGamepadHIDServicePlugin is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2abb0) and /System/Library/HIDPlugins/ServicePlugins/DualShock4HIDSer|backboardd| gin/DualShock4HIDServicePlugin (0x102d4abd0). One of the two will be used. Which one is undefined.
+|backboardd| objc[55]: Class _GCHapticEvent is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2ab10) and /System/Library/HIDPlugins/ServicePlugins/LunaHIDServicePlugin.plugin|backboardd| ePlugin (0x102e6a528). One of the two will be used. Which one is undefined.
+|backboardd| objc[55]: Class GCHapticMotor is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2ab60) and /System/Library/HIDPlugins/ServicePlugins/LunaHIDServicePlugin.plugin/|backboardd| Plugin (0x102e6a578). One of the two will be used. Which one is undefined.
+|backboardd| objc[55]: Class GCGamepadHIDServicePlugin is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2abb0) and /System/Library/HIDPlugins/ServicePlugins/LunaHIDServicePl|backboardd| naHIDServicePlugin (0x102e6a618). One of the two will be used. Which one is undefined.
+SWEET AKS: mediaserverd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: mediaserverd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+EXIT mediaserverd pid=27 status=0
+EXIT mediaserverd pid=27 killed_by_signal=11 raw=0xb
+Failed to send exception EXC_CORPSE_NOTIFY. error code: 5 for pid 27
+|backboardd| objc[55]: Class _GCHapticEvent is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2ab10) and /System/Library/HIDPlugins/ServicePlugins/XboxOneHIDServicePlugin.plu|backboardd| ServicePlugin (0x102e8a688). One of the two will be used. Which one is undefined.
+|backboardd| objc[55]: Class GCHapticMotor is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2ab60) and /System/Library/HIDPlugins/ServicePlugins/XboxOneHIDServicePlugin.plug|backboardd| ervicePlugin (0x102e8a6d8). One of the two will be used. Which one is undefined.
+|backboardd| objc[55]: Class GCGamepadHIDServicePlugin is implemented in both /System/Library/HIDPlugins/ServicePlugins/DualSenseHIDServicePlugin.plugin/DualSenseHIDServicePlugin (0x102d2abb0) and /System/Library/HIDPlugins/ServicePlugins/XboxOneHIDServic|backboardd| /XboxOneHIDServicePlugin (0x102e8a778). One of the two will be used. Which one is undefined.
+SWEET HID: SweetHIDTouch open by IOHIDEventServiceUserClient -> 1
+SWEET pthread_register #116 comm=runningboardd flags=0x4000 wq=0x1c9f3a86c
+SWEET HID: SweetHIDButtons open by IOHIDEventServiceUserClient -> 1
+EXIT atc pid=36 status=0
+EXIT atc pid=36 killed_by_signal=6 raw=0x6
+Failed to send exception EXC_CORPSE_NOTIFY. error code: 5 for pid 36
+|backboardd| 1969-12-31 16:00:42.-358 backboardd[55:315] 
+|backboardd| *** Terminating app due to uncaught exception 'NSInvalidArgumentException', reason: '*** -[NSURL initFileURLWithPath:]: nil string parameter'
+*** First throw call stack:
+(0x1818919d8 0x195bfab54 0x182a4896c 0x182a486a0 0x185be0bc0 0x185be0bfc 0x102896c48 0
+|backboardd| x1814ca280 0x18149bcd8 0x1028852d8 0x1814e9568)
+|backboardd| libc++abi.dylib: 
+|backboardd| terminating with uncaught exception of type NSException
+|backboardd| 
+EXIT backboardd pid=55 status=0
+EXIT backboardd pid=55 killed_by_signal=6 raw=0x6
+SWEET BCB: backboardd died (1 so far)
+Failed to send exception EXC_CORPSE_NOTIFY. error code: 5 for pid 55
+process CommCenter[80] crossed thread count high watermark (32), sending EXC_RESOURCE
+Failed to send exception EXC_CORPSE_NOTIFY. error code: 5 for pid 80
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388764, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Failed to complete operation; volume `iPhoneOS' might be inconsistent; fsck will be forced on next mount.
+EXIT CommCenter pid=80 status=0
+EXIT CommCenter pid=80 killed_by_signal=6 raw=0x6
+Failed to send exception EXC_CORPSE_NOTIFY. error code: 5 for pid 80
+EXEC healthd pid=32
+EXEC navd pid=71
+EXEC familynotificationd pid=41
+EXEC assistantd pid=24
+hfs: BlockMarkFreeInternal() trying to free unallocated blocks on volume iPhoneOS <2388171, 1>
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+EXEC softwareupdated pid=44
+EXEC contextstored pid=51
+EXEC askpermissiond pid=54
+SWEET pthread_register #117 comm=misd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #118 comm=peakpowermanager flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #119 comm=routined flags=0x4000 wq=0x1c9f3a86c
+EXEC tccd pid=35
+EXEC nanoprefsyncd pid=63
+EXEC mediaremoted pid=28
+SWEET pthread_register #120 comm=powerd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #121 comm=seld flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #122 comm=magicswitchd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #123 comm=healthd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: seld privilege 1002 denied
+SWEET pthread_register #124 comm=familynotificati flags=0x4000 wq=0x1c9f3a86c
+EXEC aggregated pid=66
+SWEET pthread_register #125 comm=wcd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #126 comm=amsaccountsd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #127 comm=navd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: magicswitchd privilege 1002 denied
+SWEET pthread_register #128 comm=OTACrashCopier flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #129 comm=softwareupdated flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: healthd privilege 1002 denied
+SWEET Sandbox: softwareupdated privilege 1002 denied
+SWEET Sandbox: routined privilege 1002 denied
+SWEET pthread_register #130 comm=cloudpaird flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #131 comm=nanoprefsyncd flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #132 comm=contextstored flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #133 comm=askpermissiond flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: familynotificati privilege 1002 denied
+SWEET pthread_register #134 comm=remindd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: amsaccountsd privilege 1002 denied
+SWEET pthread_register #135 comm=WirelessRadioMan flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #136 comm=tccd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: WirelessRadioMan privilege 1002 denied
+SWEET Sandbox: tccd privilege 1002 denied
+SWEET pthread_register #137 comm=atwakeup flags=0x4000 wq=0x1c9f3a86c
+SWEET pthread_register #138 comm=networkservicepr flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: atwakeup privilege 1002 denied
+SWEET Sandbox: contextstored privilege 1002 denied
+SWEET pthread_register #139 comm=aggregated flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: wcd privilege 1002 denied
+EXIT misd pid=30 status=1
+SWEET Sandbox: nanoprefsyncd privilege 1002 denied
+SWEET pthread_register #140 comm=mediaremoted flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: navd privilege 1002 denied
+SWEET Sandbox: OTACrashCopier privilege 1002 denied
+SWEET Sandbox: cloudpaird privilege 1002 denied
+SWEET Sandbox: askpermissiond privilege 1002 denied
+SWEET Sandbox: mediaremoted privilege 1002 denied
+SWEET pthread_register #141 comm=assistantd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: networkservicepr privilege 1002 denied
+SWEET Sandbox: remindd privilege 1002 denied
+SWEET Sandbox: tccd op 22
+SWEET Sandbox: tccd op 1
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+SWEET Sandbox: assistantd privilege 1002 denied
+SWEET Sandbox: aggregated privilege 1002 denied
+EXEC xpcproxy pid=83
+SWEET pthread_register #142 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC assetsd pid=83
+SWEET pthread_register #143 comm=assetsd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: assetsd privilege 1002 denied
+EXIT aggregated pid=66 status=1
+PGET powerd persona=present id=199
+SWEET AKS: powerd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: powerd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PGET wcd persona=present id=199
+SWEET AKS: wcd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: wcd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PGET remindd persona=present id=199
+SWEET AKS: remindd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: remindd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PGET navd persona=present id=199
+SWEET AKS: navd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: navd sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: navd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PGET amsaccountsd persona=present id=199
+PRESP amsaccountsd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+PGET OTACrashCopier persona=present id=199
+SWEET AKS: OTACrashCopier sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: OTACrashCopier sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PGET cloudpaird persona=present id=199
+SWEET AKS: cloudpaird sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: cloudpaird sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PRESP cloudpaird req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+SWEET AKS: routined sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: routined sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+EXEC xpcproxy pid=84
+SWEET pthread_register #144 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC coreduetd pid=84
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+SWEET pthread_register #145 comm=coreduetd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: coreduetd privilege 1002 denied
+SWEET AKS: routined sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+SWEET Sandbox: contextstored op 7
+SWEET Sandbox: amsaccountsd op 5
+SWEET AKS: healthd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: healthd sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: healthd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+SWEET AKS: amsaccountsd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: amsaccountsd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+PRESP remindd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+EXEC xpcproxy pid=85
+SWEET pthread_register #146 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC mDNSResponder pid=85
+PRESP launchd req_v=1 id=199 uid=199 type=6 name='4D8A63F2-23F1-46D5-A979-9943FB74EEC6'
+SWEET pthread_register #147 comm=mDNSResponder flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: mDNSResponder privilege 1002 denied
+EXIT mDNSResponder pid=85 status=-1
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+hfs_mark_inconsistent: Runtime corruption detected on iPhoneOS, fsck will be forced on next mount.
+EXIT ReportCrash pid=82 status=0
+SWEET TOUCH: mapping GCC/TLMM/SE7
+SWEET TOUCH: gcc vote=0xbc0000 rcg=0 cfg=0x102100 dfs=0x8020
+SWEET TOUCH: se7 fw=0x220 proto=2 status=0x41000 tx=0x20102864 rx=0x20104900 ios=0
+SWEET TOUCH: need ABL-loaded I2C firmware and 32-bit FIFOs; probes skipped
+EXC_RESOURCE -> assistantd[24] exceeded mem limit: InactiveHard 60 MB (fatal)
+EXIT assistantd pid=24 status=0
+EXIT assistantd pid=24 killed_by_signal=9 raw=0x9
+56.503 memorystatus: killing_specific_process pid 24 [assistantd] (per-process-limit 0) 61440KB - memorystatus_available_pages: 215622
+SWEET AKS: imagent sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: imagent sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: imagent sel 17 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET AKS: imagent sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+SIGTRAP containermanager pc=0x100276580 lr=0x100276580
+EXIT containermanager pid=61 status=0
+EXIT containermanager pid=61 killed_by_signal=5 raw=0x5
+SWEET BCB: containermanager died (2 so far)
+EXEC xpcproxy pid=86
+SWEET pthread_register #148 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC containermanagerd pid=86
+SWEET pthread_register #149 comm=containermanager flags=0x4000 wq=0x1c9f3a86c
+SIGTRAP containermanager pc=0x10405e580 lr=0x10405e580
+EXIT containermanager pid=86 status=0
+EXIT containermanager pid=86 killed_by_signal=5 raw=0x5
+SWEET BCB: containermanager died (3 so far)
+EXEC xpcproxy pid=87
+SWEET pthread_register #150 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC containermanagerd pid=87
+SWEET pthread_register #151 comm=containermanager flags=0x4000 wq=0x1c9f3a86c
+process mobiletimerd[45] thread 312 caught burning CPU! It used more than 50% CPU over 180 seconds
+  (actual recent usage: 65% over ~137 seconds)
+  Thread lifetime cpu usage 90.168060s, (57.935509 user, 32.232551 sys)
+  Ledger balance: 1728003294; mabs credit: 1728159994; mabs debit: 156700
+  mabs limit: 1728000000; mabs period: 180000000000 ns; last refill: 137438922968 ns.
+EXEC xpcproxy pid=88
+SWEET pthread_register #152 comm=xpcproxy flags=0x4000 wq=0x1c9f3a86c
+EXEC symptomsd pid=88
+SWEET pthread_register #153 comm=symptomsd flags=0x4000 wq=0x1c9f3a86c
+SWEET Sandbox: symptomsd privilege 1002 denied
+SWEET Sandbox: symptomsd privilege 10003 denied
+SWEET AKS: symptomsd sel 0 arg0 0 in 0/0 out 0/0 -> 0x0
+SWEET AKS: symptomsd sel 7 arg0 0 in 1/0 out 1/0 -> 0x0
+SWEET AKS: symptomsd sel 35 arg0 0 in 1/0 out 0/4096 -> 0x0
+SWEET KEYS: key=0 down=1 pon=0x5 gpio4:c110=0
+SWEET HID: key 0x30 down (0 clients)
+SWEET KEYS: key=2 down=1 pon=0x7 gpio4:c110=0
+SWEET HID: key 0xea down (0 clients)
