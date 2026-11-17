@@ -70,3 +70,71 @@ Uma leitura de tela: **quantas linhas aparecem, e qual é a última**. O console
 visível diz o ponto exato.
 
 Sem isso eu só tenho hipóteses. Com isso eu sei qual função instrumentar.
+
+
+---
+
+# ATUALIZAÇÃO: a tela diz `SWEET EARLY 32`
+
+Lido na tela pelo dono: **aparece `SWEET EARLY 32` e para.**
+
+## O que isso localiza, com precisão
+
+`SWEET MARK(32)` é a **primeira** marca do `kernel_bootstrap`
+(`osfmk/kern/startup.c:385`). A ordem no código é:
+
+```c
+printf("%s\n", version);
+SWEET_MARK(32, "kernel_bootstrap entered");   <-- ULTIMA COISA VISIVEL
+scale_setup();
+SWEET_MARK(33, "scale_setup done");           <-- nunca imprime
+vm_mem_bootstrap();
+SWEET_MARK(34, "vm_mem_bootstrap done");
+```
+
+Então o kernel chega **ao fim do `arm_vm_init`** (as marcas 1-31 são de lá e
+passaram), entra no `kernel_bootstrap`, imprime a 32 — e morre antes da 33.
+
+## O que isso descarta
+
+| hipótese | porque cai |
+| --- | --- |
+| travamento no pmap/`arm_vm_init` | a marca 32 só roda **depois** do `arm_vm_init` inteiro |
+| `sweet_early_map_final` / `assert(*slot == ARM_TTE_EMPTY)` | vem antes da 32; se disparasse, a 32 nunca apareceria |
+| framebuffer fora do mapeamento | calculado: a tela ocupa `0x9d400000..0x9dfff400`, o bloco mapeado é `0x9c000000..0x9e000000` — **cabe, com 3 KB de folga** |
+| `scale_setup()` | é só aritmética com `max_mem_actual`/`task_max`; não aloca nem acessa hardware |
+
+## O que sobra: a primeira pintura
+
+A marca 32 é a **primeira** chamada de `sweet_early_putc` da vida deste kernel, e
+é ela que executa o bloco `if (!early_started)`:
+
+```c
+for (y = 0; y < EARLY_BAR_TOP; y++)          // 2152 linhas
+    for (x = 0; x < EARLY_WIDTH; x++)        // 1440 colunas
+        line[x] = LOGO_BLACK;                // 3,1 M escritas de 32 bits
+sweet_early_paint_logo();                    // 207x241 pixels do logo
+sweet_early_clear_row();
+```
+
+São **~12 MB de escritas** no framebuffer. Se o MMU daquele bloco não estiver com
+a atribuição que o código supõe (por exemplo `CACHE_ATTRINDX_WRITECOMB` — memoria
+Normal-NC — sobre uma região que o `arm_vm_init` também mapeia como cacheable),
+a escrita não falha imediatamente: ela pode **travar o barramento** ou gerar um
+fault em background que só aparece no próximo acesso.
+
+## O que fazer agora, e é barato
+
+Duas coisas que não dependem de adivinhar:
+
+1. **Marcar dentro do bloco `!early_started`.** Uma `sweet_early_putc` crua
+   (sem passar pela pintura) antes do laço, e outra depois. Se a primeira aparece
+   e a segunda não, o travamento é nas 12 MB de escrita. Isso é uma edição pequena
+   e o build funciona.
+
+2. **Testar sem a pintura.** Um boot-arg que pula `!early_started` inteiro
+   (ex.: `sweetnologo=1`) mostraria se o kernel avança com o console funcionando e
+   o logo desligado. Se avançar, é a pintura; se não, é outra coisa e o console
+   simplesmente parou de poder escrever.
+
+A (2) é a mais informativa e a mais rápida de escrever.
